@@ -7,7 +7,8 @@
       "include": [
         "refs/heads/main",
         "refs/heads/FirstCommit-code"
-      ]
+      ],
+      "exclude": []
     }
   },
   "rules": [
@@ -15,16 +16,7 @@
       "type": "pull_request",
       "parameters": {
         "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false
-      }
-    },
-    {
-      "type": "required_status_checks",
-      "parameters": {
-        "strict_required_status_checks_policy": true,
-        "required_status_checks": []
+        "dismiss_stale_reviews_on_push": true
       }
     },
     {
@@ -32,6 +24,9 @@
     },
     {
       "type": "non_fast_forward": {}
+    },
+    {
+      "type": "deletion": {}
     }
   ]
 }
