@@ -54,7 +54,7 @@ jobs:
       
       - name: Restore dependencies
         shell: powershell
-        run: dotnet restore MyApp/MyApp.sln
+        run: dotnet restore MyApp.sln
       
       - name: Build and analyze
         env:
@@ -64,11 +64,11 @@ jobs:
         run: |
           ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
           
-          dotnet build MyApp/MyApp.sln --configuration Release --no-incremental
+          dotnet build MyApp.sln --configuration Release --no-incremental
           
           # Run tests with coverage if test projects exist
-          if (Test-Path "MyApp/**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
-            dotnet test MyApp/MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}\TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
+            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}\TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
           }
           
           ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
