@@ -46,7 +46,11 @@ jobs:
         shell: powershell
         run: |
           New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory -Force
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner || dotnet tool install dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          try {
+            dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          } catch {
+            dotnet tool install dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          }
       
       - name: Restore dependencies
         shell: powershell

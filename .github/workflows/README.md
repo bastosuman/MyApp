@@ -6,11 +6,14 @@ The `build.yml` workflow runs SonarQube code analysis on pushes and pull request
 
 ### Prerequisites
 
-1. **SonarQube Token**: You need to add a `SONAR_TOKEN` secret to your repository
+1. **SonarQube Token (REQUIRED)**: You **MUST** add a `SONAR_TOKEN` secret for the workflow to run
+   - ⚠️ **The workflow will fail without this secret**
    - Go to: https://github.com/bastosuman/MyApp/settings/secrets/actions
    - Click "New repository secret"
-   - Name: `SONAR_TOKEN`
+   - Name: `SONAR_TOKEN` (exact name, case-sensitive)
    - Value: Your SonarQube token (get it from SonarCloud.io)
+     - Login to https://sonarcloud.io
+     - Go to: My Account → Security → Generate Token
    - Click "Add secret"
 
 2. **SonarQube Project**: Ensure your SonarQube project key matches `bastosuman_MyApp`
