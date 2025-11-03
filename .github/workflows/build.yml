@@ -9,6 +9,7 @@ on:
     types: [opened, synchronize, reopened]
     branches:
       - main
+      - master
       - FirstCommit-code
 
 jobs:
@@ -106,22 +107,21 @@ jobs:
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
-          # Update sonar-project.properties with coverage path if file exists
+          # Set coverage path for SonarCloud
           $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
           if (Test-Path $coverageFile) {
-            Write-Host "Setting coverage path in sonar-project.properties..."
-            $sonarProps = "${{ github.workspace }}/sonar-project.properties"
-            if (Test-Path $sonarProps) {
-              $content = Get-Content $sonarProps -Raw
-              if ($content -notmatch "sonar.cs.opencover.reportsPaths") {
-                Add-Content -Path $sonarProps -Value "`nsonar.cs.opencover.reportsPaths=$coverageFile"
-                Write-Host "Added coverage path to sonar-project.properties"
-              }
-            }
-          }
-          
-          try {
+            Write-Host "Coverage file found, including in SonarCloud analysis"
+            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.cs.opencover.reportsPaths="$coverageFile"
+          } else {
+            Write-Host "Coverage file not found, ending scan without coverage"
             dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
-          } catch {
-            Write-Host "SonarScanner end completed with warnings"
           }
+      
+      - name: Upload SonarQube Quality Gate status
+        if: always()
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: .sonarqube/report-task.txt
