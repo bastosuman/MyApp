@@ -8,6 +8,9 @@ namespace MyApp.Data;
 /// </summary>
 public class ApplicationDbContext : DbContext
 {
+    private const string DecimalTypeStandard = "decimal(18,2)";
+    private const string DecimalTypeInterestRate = "decimal(5,2)";
+    
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
@@ -38,7 +41,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Transaction>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Amount).HasColumnType(DecimalTypeStandard);
             entity.HasOne(e => e.Account)
                   .WithMany(a => a.Transactions)
                   .HasForeignKey(e => e.AccountId)
@@ -49,9 +52,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Application>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.RequestedAmount).HasColumnType("decimal(18,2)");
-            entity.Property(e => e.ApprovedAmount).HasColumnType("decimal(18,2)");
-            entity.Property(e => e.InterestRate).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.RequestedAmount).HasColumnType(DecimalTypeStandard);
+            entity.Property(e => e.ApprovedAmount).HasColumnType(DecimalTypeStandard);
+            entity.Property(e => e.InterestRate).HasColumnType(DecimalTypeInterestRate);
             entity.HasOne(e => e.Account)
                   .WithMany(a => a.Applications)
                   .HasForeignKey(e => e.AccountId)
@@ -62,9 +65,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Product>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.MinAmount).HasColumnType("decimal(18,2)");
-            entity.Property(e => e.MaxAmount).HasColumnType("decimal(18,2)");
-            entity.Property(e => e.InterestRate).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.MinAmount).HasColumnType(DecimalTypeStandard);
+            entity.Property(e => e.MaxAmount).HasColumnType(DecimalTypeStandard);
+            entity.Property(e => e.InterestRate).HasColumnType(DecimalTypeInterestRate);
         });
     }
 }
