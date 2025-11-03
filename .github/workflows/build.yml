@@ -101,6 +101,7 @@ jobs:
       
       - name: End SonarCloud Scan and Verify
         if: always()
+        id: end-sonarcloud
         shell: powershell
         working-directory: ${{ github.workspace }}
         env:
@@ -124,30 +125,45 @@ jobs:
           
           Write-Host "SonarCloud analysis completed"
           
-          # Verify report file was created
-          if (-Not (Test-Path ".scannerwork/report-task.txt")) {
+          # Determine report file location (newer versions use .sonarqube, older use .scannerwork)
+          $reportFile = $null
+          if (Test-Path ".sonarqube/report-task.txt") {
+            $reportFile = ".sonarqube/report-task.txt"
+            Write-Host "Found report file in .sonarqube directory"
+          } elseif (Test-Path ".scannerwork/report-task.txt") {
+            $reportFile = ".scannerwork/report-task.txt"
+            Write-Host "Found report file in .scannerwork directory"
+          }
+          
+          if (-not $reportFile) {
             Write-Host "ERROR: Report file not found. Current directory: $(Get-Location)"
             Write-Host "Directory contents:"
             Get-ChildItem | ForEach-Object { Write-Host "  $($_.Name)" }
+            if (Test-Path ".sonarqube") {
+              Write-Host "Contents of .sonarqube:"
+              Get-ChildItem -Path ".sonarqube" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            }
             if (Test-Path ".scannerwork") {
               Write-Host "Contents of .scannerwork:"
               Get-ChildItem -Path ".scannerwork" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
-            } else {
-              Write-Host ".scannerwork directory does not exist"
             }
             exit 1
           }
           
-          Write-Host "Report file created successfully: .scannerwork/report-task.txt"
+          Write-Host "Report file found: $reportFile"
           Write-Host "Report file contents:"
-          Get-Content ".scannerwork/report-task.txt"
+          Get-Content $reportFile
+          
+          # Set output for quality gate action
+          "reportFile=$reportFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       
       - name: Upload SonarQube Quality Gate status
         if: always()
+        id: sonarqube-quality-gate
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          scanMetadataReportFile: .scannerwork/report-task.txt
+          scanMetadataReportFile: ${{ steps['end-sonarcloud'].outputs.reportFile || '.sonarqube/report-task.txt' }}
 
