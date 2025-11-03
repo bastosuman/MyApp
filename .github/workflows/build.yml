@@ -62,7 +62,10 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="$coveragePath" `
             /d:sonar.coverage.exclusions="$coverageExclusions" `
             /d:sonar.csharp.coverage.exclusions="$coverageExclusions" `
-            /d:sonar.exclusions="$sourceExclusions"
+            /d:sonar.exclusions="$sourceExclusions" `
+            /d:sonar.sourceEncoding=UTF-8 `
+            /d:sonar.sources=. `
+            /d:sonar.tests=.
       
       - name: Build solution
         shell: powershell
