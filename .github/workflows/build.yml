@@ -40,7 +40,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+          # Start SonarCloud scan - coverage path will be set after tests run
+          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io"
       
       - name: Build solution
         shell: powershell
@@ -50,36 +51,50 @@ jobs:
         shell: powershell
         run: |
           if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
+            Write-Host "Running tests with coverage collection..."
             dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
             
-            # Find and copy coverage files to workspace root for SonarCloud
+            # Find coverage files in TestResults subdirectories (they're in GUID folders)
+            Write-Host "Searching for coverage files..."
             $coverageFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.opencover.xml"
-            foreach ($file in $coverageFiles) {
-              Copy-Item -Path $file.FullName -Destination "${{ github.workspace }}/coverage.opencover.xml" -Force
-              Write-Host "Copied coverage file to: ${{ github.workspace }}/coverage.opencover.xml"
-            }
             
-            # List all coverage files found
-            Write-Host "Coverage files found:"
-            Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" | ForEach-Object { Write-Host "  $($_.FullName)" }
+            if ($coverageFiles.Count -eq 0) {
+              Write-Host "⚠️ No coverage files found! Listing all XML files:"
+              Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" | ForEach-Object { Write-Host "  $($_.FullName)" }
+            } else {
+              Write-Host "Found $($coverageFiles.Count) coverage file(s):"
+              foreach ($file in $coverageFiles) {
+                Write-Host "  Source: $($file.FullName)"
+                
+                # Copy to workspace root (SonarCloud will look here)
+                $destPath = "${{ github.workspace }}/coverage.opencover.xml"
+                Copy-Item -Path $file.FullName -Destination $destPath -Force
+                Write-Host "  Copied to: $destPath"
+                
+                # Verify the copy
+                if (Test-Path $destPath) {
+                  $destFile = Get-Item $destPath
+                  Write-Host "  ✅ File copied successfully ($($destFile.Length) bytes)"
+                }
+              }
+            }
           } else {
             Write-Host "No test projects found, skipping tests"
           }
       
-      - name: Verify coverage file exists
+      - name: Verify coverage file before SonarCloud end
         if: always()
         shell: powershell
         run: |
-          Write-Host "Checking for coverage files..."
           $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
           if (Test-Path $coverageFile) {
-            Write-Host "✅ Coverage file found: $coverageFile"
+            Write-Host "✅ Coverage file ready for SonarCloud: $coverageFile"
             $fileInfo = Get-Item $coverageFile
-            Write-Host "File size: $($fileInfo.Length) bytes"
+            Write-Host "   Size: $($fileInfo.Length) bytes"
           } else {
-            Write-Host "⚠️ Coverage file not found at: $coverageFile"
-            Write-Host "Searching for coverage files..."
-            Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage*.xml" | ForEach-Object { Write-Host "  Found: $($_.FullName)" }
+            Write-Host "⚠️ Coverage file not found. SonarCloud will run without coverage data."
+            Write-Host "   Searching workspace for coverage files:"
+            Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage*.xml" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "     $($_.FullName)" }
           }
       
       - name: End SonarCloud Scan
@@ -90,6 +105,21 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          
+          # Update sonar-project.properties with coverage path if file exists
+          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
+          if (Test-Path $coverageFile) {
+            Write-Host "Setting coverage path in sonar-project.properties..."
+            $sonarProps = "${{ github.workspace }}/sonar-project.properties"
+            if (Test-Path $sonarProps) {
+              $content = Get-Content $sonarProps -Raw
+              if ($content -notmatch "sonar.cs.opencover.reportsPaths") {
+                Add-Content -Path $sonarProps -Value "`nsonar.cs.opencover.reportsPaths=$coverageFile"
+                Write-Host "Added coverage path to sonar-project.properties"
+              }
+            }
+          }
+          
           try {
             dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
           } catch {
