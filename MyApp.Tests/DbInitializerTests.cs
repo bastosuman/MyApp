@@ -378,5 +378,72 @@ public class DbInitializerTests
         Assert.All(products, p => Assert.True(p.MinTermMonths >= 0));
         Assert.All(products, p => Assert.True(p.MaxTermMonths >= p.MinTermMonths));
     }
+
+    [Fact]
+    public void Seed_AllHelperMethodsAreExecuted()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        DbInitializer.Seed(context);
+
+        // Assert - Verify all helper methods were executed by checking results
+        var products = context.Products.ToList();
+        var accounts = context.Accounts.ToList();
+
+        // Verify CreateProduct was called for all 4 products
+        Assert.Equal(4, products.Count);
+        Assert.Contains(products, p => p.Name == "Personal Loan" && p.ProductType == "Loan");
+        Assert.Contains(products, p => p.Name == "Home Loan" && p.ProductType == "Mortgage");
+        Assert.Contains(products, p => p.Name == "Credit Card" && p.ProductType == "Credit");
+        Assert.Contains(products, p => p.Name == "Savings Account" && p.ProductType == "Deposit");
+
+        // Verify CreateAccount was called for all 3 accounts
+        Assert.Equal(3, accounts.Count);
+        Assert.Contains(accounts, a => a.AccountNumber == "ACC001" && a.FirstName == "John");
+        Assert.Contains(accounts, a => a.AccountNumber == "ACC002" && a.FirstName == "Jane");
+        Assert.Contains(accounts, a => a.AccountNumber == "ACC003" && a.FirstName == "Robert");
+    }
+
+    [Fact]
+    public void Seed_ProductsHaveAllPropertiesSet()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        DbInitializer.Seed(context);
+
+        // Assert - Verify CreateProduct sets all properties correctly
+        var personalLoan = context.Products.First(p => p.Name == "Personal Loan");
+        Assert.Equal("Loan", personalLoan.ProductType);
+        Assert.Equal(1000.00m, personalLoan.MinAmount);
+        Assert.Equal(50000.00m, personalLoan.MaxAmount);
+        Assert.Equal(5.5m, personalLoan.InterestRate);
+        Assert.Equal(12, personalLoan.MinTermMonths);
+        Assert.Equal(60, personalLoan.MaxTermMonths);
+        Assert.True(personalLoan.IsActive);
+        Assert.Contains("Flexible personal loans", personalLoan.Description);
+    }
+
+    [Fact]
+    public void Seed_AccountsHaveAllPropertiesSet()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        DbInitializer.Seed(context);
+
+        // Assert - Verify CreateAccount sets all properties correctly
+        var account = context.Accounts.First(a => a.AccountNumber == "ACC001");
+        Assert.Equal("John", account.FirstName);
+        Assert.Equal("Doe", account.LastName);
+        Assert.Equal("john.doe@example.com", account.Email);
+        Assert.Equal("+1-555-0101", account.Phone);
+        Assert.True(account.IsActive);
+        Assert.True(account.DateCreated <= DateTime.UtcNow);
+    }
 }
 

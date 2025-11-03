@@ -267,7 +267,7 @@ public class ApplicationDbContextTests
         // Arrange
         using var context = CreateInMemoryDbContext();
 
-        // Act
+        // Act - Force model creation by accessing it
         var accountEntity = context.Model.FindEntityType(typeof(Account));
         var transactionEntity = context.Model.FindEntityType(typeof(Transaction));
         var applicationEntity = context.Model.FindEntityType(typeof(Application));
@@ -278,6 +278,77 @@ public class ApplicationDbContextTests
         Assert.NotNull(transactionEntity);
         Assert.NotNull(applicationEntity);
         Assert.NotNull(productEntity);
+        
+        // Verify model configuration was applied
+        var accountKey = accountEntity!.FindPrimaryKey();
+        Assert.NotNull(accountKey);
+        Assert.Contains(accountKey.Properties, p => p.Name == "Id");
+    }
+
+    [Fact]
+    public void DbContext_OnModelCreating_ConfiguresAccountProperties()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        var accountEntity = context.Model.FindEntityType(typeof(Account));
+        var accountNumberProperty = accountEntity!.FindProperty("AccountNumber");
+        var emailProperty = accountEntity.FindProperty("Email");
+
+        // Assert
+        Assert.NotNull(accountNumberProperty);
+        Assert.False(accountNumberProperty!.IsNullable);
+        Assert.Equal(50, accountNumberProperty.GetMaxLength());
+        
+        Assert.NotNull(emailProperty);
+        Assert.Equal(255, emailProperty!.GetMaxLength());
+    }
+
+    [Fact]
+    public void DbContext_OnModelCreating_ConfiguresTransactionRelationship()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        var transactionEntity = context.Model.FindEntityType(typeof(Transaction));
+        var foreignKey = transactionEntity!.GetForeignKeys().FirstOrDefault(fk => fk.PrincipalEntityType.ClrType == typeof(Account));
+
+        // Assert
+        Assert.NotNull(foreignKey);
+        Assert.Equal(DeleteBehavior.Restrict, foreignKey!.DeleteBehavior);
+    }
+
+    [Fact]
+    public void DbContext_OnModelCreating_ConfiguresApplicationRelationship()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        var applicationEntity = context.Model.FindEntityType(typeof(Application));
+        var foreignKey = applicationEntity!.GetForeignKeys().FirstOrDefault(fk => fk.PrincipalEntityType.ClrType == typeof(Account));
+
+        // Assert
+        Assert.NotNull(foreignKey);
+        Assert.Equal(DeleteBehavior.Restrict, foreignKey!.DeleteBehavior);
+    }
+
+    [Fact]
+    public void DbContext_OnModelCreating_ConfiguresDecimalPrecision()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+
+        // Act
+        var transactionEntity = context.Model.FindEntityType(typeof(Transaction));
+        var amountProperty = transactionEntity!.FindProperty("Amount");
+        var columnType = amountProperty!.GetColumnType();
+
+        // Assert
+        Assert.NotNull(columnType);
+        Assert.Contains("decimal", columnType);
     }
 }
 
