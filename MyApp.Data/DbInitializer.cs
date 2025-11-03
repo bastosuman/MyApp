@@ -38,14 +38,14 @@ public static class DbInitializer
     {
         return new List<Product>
         {
-            CreateProduct("Personal Loan", "Loan", 1000.00m, 50000.00m, 5.5m, 12, 60, 
-                "Flexible personal loans for various needs with competitive rates."),
-            CreateProduct("Home Loan", "Mortgage", 50000.00m, 500000.00m, 4.2m, 60, 360, 
-                "Mortgage loans for home purchase or refinancing with attractive rates."),
-            CreateProduct("Credit Card", "Credit", 500.00m, 10000.00m, 18.9m, 1, 60, 
-                "Credit card with flexible repayment options and rewards program."),
-            CreateProduct("Savings Account", "Deposit", 0.00m, 1000000.00m, 2.5m, 0, 0, 
-                "High-yield savings account with competitive interest rates.")
+            CreateProduct(new ProductConfig("Personal Loan", "Loan", 1000.00m, 50000.00m, 5.5m, 12, 60, 
+                "Flexible personal loans for various needs with competitive rates.")),
+            CreateProduct(new ProductConfig("Home Loan", "Mortgage", 50000.00m, 500000.00m, 4.2m, 60, 360, 
+                "Mortgage loans for home purchase or refinancing with attractive rates.")),
+            CreateProduct(new ProductConfig("Credit Card", "Credit", 500.00m, 10000.00m, 18.9m, 1, 60, 
+                "Credit card with flexible repayment options and rewards program.")),
+            CreateProduct(new ProductConfig("Savings Account", "Deposit", 0.00m, 1000000.00m, 2.5m, 0, 0, 
+                "High-yield savings account with competitive interest rates."))
         };
     }
 
@@ -59,22 +59,31 @@ public static class DbInitializer
         };
     }
 
-    private static Product CreateProduct(string name, string productType, decimal minAmount, 
-        decimal maxAmount, decimal interestRate, int minTermMonths, int maxTermMonths, string description)
+    private static Product CreateProduct(ProductConfig config)
     {
         return new Product
         {
-            Name = name,
-            ProductType = productType,
-            MinAmount = minAmount,
-            MaxAmount = maxAmount,
-            InterestRate = interestRate,
-            MinTermMonths = minTermMonths,
-            MaxTermMonths = maxTermMonths,
+            Name = config.Name,
+            ProductType = config.ProductType,
+            MinAmount = config.MinAmount,
+            MaxAmount = config.MaxAmount,
+            InterestRate = config.InterestRate,
+            MinTermMonths = config.MinTermMonths,
+            MaxTermMonths = config.MaxTermMonths,
             IsActive = true,
-            Description = description
+            Description = config.Description
         };
     }
+
+    private sealed record ProductConfig(
+        string Name,
+        string ProductType,
+        decimal MinAmount,
+        decimal MaxAmount,
+        decimal InterestRate,
+        int MinTermMonths,
+        int MaxTermMonths,
+        string Description);
 
     private static Account CreateAccount(string accountNumber, string firstName, string lastName, 
         string email, string phone, int daysOffset)

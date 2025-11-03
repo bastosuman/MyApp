@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MyApp.Core.Interfaces;
+using System.ComponentModel.DataAnnotations;
 
 namespace MyApp.Controllers;
 
@@ -22,6 +23,8 @@ public class CalculationsController : ControllerBase
     /// Calculate interest for a loan
     /// </summary>
     [HttpPost("interest")]
+    [ProducesResponseType(typeof(InterestResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult CalculateInterest([FromBody] InterestCalculationRequest request)
     {
         if (request.Principal <= 0 || request.Rate <= 0 || request.TermMonths <= 0)
@@ -30,13 +33,15 @@ public class CalculationsController : ControllerBase
         }
 
         var interest = _calculationService.CalculateInterest(request.Principal, request.Rate, request.TermMonths);
-        return Ok(new { Interest = interest });
+        return Ok(new InterestResponse { Interest = interest });
     }
 
     /// <summary>
     /// Calculate monthly payment for a loan
     /// </summary>
     [HttpPost("monthly-payment")]
+    [ProducesResponseType(typeof(MonthlyPaymentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult CalculateMonthlyPayment([FromBody] PaymentCalculationRequest request)
     {
         if (request.Principal <= 0 || request.TermMonths <= 0)
@@ -52,7 +57,7 @@ public class CalculationsController : ControllerBase
         var totalPayment = _calculationService.CalculateTotalPayment(monthlyPayment, request.TermMonths);
         var totalInterest = totalPayment - request.Principal;
 
-        return Ok(new
+        return Ok(new MonthlyPaymentResponse
         {
             MonthlyPayment = monthlyPayment,
             TotalPayment = totalPayment,
@@ -64,6 +69,8 @@ public class CalculationsController : ControllerBase
     /// Calculate credit score based on financial factors
     /// </summary>
     [HttpPost("credit-score")]
+    [ProducesResponseType(typeof(CreditScoreResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult CalculateCreditScore([FromBody] CreditScoreRequest request)
     {
         if (request.MonthlyIncome < 0 || request.MonthlyDebt < 0)
@@ -77,12 +84,29 @@ public class CalculationsController : ControllerBase
             request.CreditHistoryMonths,
             request.HasBankruptcy);
 
-        return Ok(new { CreditScore = creditScore });
+        return Ok(new CreditScoreResponse { CreditScore = creditScore });
     }
 }
 
 // Request DTOs
-public record InterestCalculationRequest(decimal Principal, decimal Rate, int TermMonths);
-public record PaymentCalculationRequest(decimal Principal, decimal AnnualRate, int TermMonths);
-public record CreditScoreRequest(decimal MonthlyIncome, decimal MonthlyDebt, int CreditHistoryMonths, bool HasBankruptcy);
+public record InterestCalculationRequest(
+    [Required] decimal Principal, 
+    [Required] decimal Rate, 
+    [Required] int TermMonths);
+
+public record PaymentCalculationRequest(
+    [Required] decimal Principal, 
+    [Required] decimal AnnualRate, 
+    [Required] int TermMonths);
+
+public record CreditScoreRequest(
+    [Required] decimal MonthlyIncome, 
+    [Required] decimal MonthlyDebt, 
+    [Required] int CreditHistoryMonths, 
+    [Required] bool HasBankruptcy);
+
+// Response DTOs
+public record InterestResponse(decimal Interest);
+public record MonthlyPaymentResponse(decimal MonthlyPayment, decimal TotalPayment, decimal TotalInterest);
+public record CreditScoreResponse(int CreditScore);
 
