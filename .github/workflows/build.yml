@@ -54,6 +54,10 @@ jobs:
           # Source exclusions - exclude frontend files from SonarCloud analysis
           $sourceExclusions = "**/BankUI/**,**/node_modules/**,**/dist/**,**/build/**"
           
+          # Set new code baseline for coverage calculation
+          $newCodeBaseline = if ($env:GITHUB_BASE_REF) { $env:GITHUB_BASE_REF } else { "main" }
+          Write-Host "Using new code baseline: $newCodeBaseline"
+          
           dotnet sonarscanner begin `
             /k:"bastosuman_MyApp" `
             /o:"bastosuman" `
@@ -65,7 +69,8 @@ jobs:
             /d:sonar.exclusions="$sourceExclusions" `
             /d:sonar.sourceEncoding=UTF-8 `
             /d:sonar.sources=. `
-            /d:sonar.tests=.
+            /d:sonar.tests=. `
+            /d:sonar.newCode.referenceBranch="$newCodeBaseline"
       
       - name: Build solution
         shell: powershell
