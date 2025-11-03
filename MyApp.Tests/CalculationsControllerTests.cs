@@ -17,6 +17,19 @@ public class CalculationsControllerTests
         _controller = new CalculationsController(_mockCalculationService.Object);
     }
 
+    [Fact]
+    public void Constructor_InitializesCorrectly()
+    {
+        // Arrange
+        var mockService = new Mock<ICalculationService>();
+
+        // Act
+        var controller = new CalculationsController(mockService.Object);
+
+        // Assert
+        Assert.NotNull(controller);
+    }
+
     #region CalculateInterest Tests
 
     [Fact]
@@ -114,6 +127,20 @@ public class CalculationsControllerTests
     {
         // Arrange
         var request = new InterestCalculationRequest(10000m, 5.5m, -12);
+
+        // Act
+        var result = _controller.CalculateInterest(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Principal, rate, and term must be greater than 0", badRequestResult.Value);
+    }
+
+    [Fact]
+    public void CalculateInterest_MultipleInvalidFields_ReturnsBadRequest()
+    {
+        // Arrange - Test case where multiple validation conditions are true
+        var request = new InterestCalculationRequest(0m, 0m, 0);
 
         // Act
         var result = _controller.CalculateInterest(request);
@@ -231,6 +258,20 @@ public class CalculationsControllerTests
         Assert.Equal("Principal and term must be greater than 0", badRequestResult.Value);
     }
 
+    [Fact]
+    public void CalculateMonthlyPayment_BothPrincipalAndTermInvalid_ReturnsBadRequest()
+    {
+        // Arrange - Test case where both validation conditions are true
+        var request = new PaymentCalculationRequest(0m, 5.5m, 0);
+
+        // Act
+        var result = _controller.CalculateMonthlyPayment(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Principal and term must be greater than 0", badRequestResult.Value);
+    }
+
     [Theory]
     [InlineData(50000.0, 4.5, 240)]
     [InlineData(200000.0, 6.0, 180)]
@@ -319,6 +360,20 @@ public class CalculationsControllerTests
     {
         // Arrange
         var request = new CreditScoreRequest(5000m, -500m, 24, false);
+
+        // Act
+        var result = _controller.CalculateCreditScore(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Income and debt cannot be negative", badRequestResult.Value);
+    }
+
+    [Fact]
+    public void CalculateCreditScore_BothIncomeAndDebtNegative_ReturnsBadRequest()
+    {
+        // Arrange - Test case where both validation conditions are true
+        var request = new CreditScoreRequest(-1000m, -500m, 24, false);
 
         // Act
         var result = _controller.CalculateCreditScore(request);
