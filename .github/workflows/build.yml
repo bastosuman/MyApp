@@ -9,6 +9,7 @@ on:
     types: [opened, synchronize, reopened]
     branches:
       - main
+      - master
       - FirstCommit-code
 
 jobs:
@@ -40,22 +41,121 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.coverage.exclusions="**/*" /d:sonar.newCode.coverage.exclusions="**/*" /d:sonar.csharp.coverage.exclusions="**/*"
+          
+          # Set coverage path - file will be created after tests run
+          $coveragePath = "${{ github.workspace }}/coverage.opencover.xml"
+          Write-Host "Starting SonarCloud scan with coverage path: $coveragePath"
+          
+          # Coverage exclusions - exclude generated files, migrations, and entry point
+          $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs"
+          
+          dotnet sonarscanner begin `
+            /k:"bastosuman_MyApp" `
+            /o:"bastosuman" `
+            /d:sonar.login="$env:SONAR_TOKEN" `
+            /d:sonar.host.url="https://sonarcloud.io" `
+            /d:sonar.cs.opencover.reportsPaths="$coveragePath" `
+            /d:sonar.coverage.exclusions="$coverageExclusions" `
+            /d:sonar.csharp.coverage.exclusions="$coverageExclusions"
       
       - name: Build solution
         shell: powershell
-        run: dotnet build MyApp.sln --configuration Release
+        run: dotnet build MyApp.sln --configuration Release --no-incremental
+      
+      - name: Run tests with coverage
+        shell: powershell
+        run: |
+          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
+            Write-Host "Running tests with coverage collection..."
+            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+            
+            # Find and copy coverage files
+            Write-Host "Searching for coverage files..."
+            $coverageFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.opencover.xml"
+            
+            if ($coverageFiles.Count -eq 0) {
+              Write-Host "⚠️ No coverage files found!"
+              Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" | ForEach-Object { Write-Host "  Found: $($_.FullName)" }
+              exit 1
+            }
+            
+            Write-Host "Found $($coverageFiles.Count) coverage file(s)"
+            foreach ($file in $coverageFiles) {
+              Write-Host "  Source: $($file.FullName)"
+              
+              # Copy to workspace root
+              $destPath = "${{ github.workspace }}/coverage.opencover.xml"
+              Copy-Item -Path $file.FullName -Destination $destPath -Force
+              
+              if (Test-Path $destPath) {
+                $destFile = Get-Item $destPath
+                Write-Host "  ✅ Copied to: $destPath ($($destFile.Length) bytes)"
+              } else {
+                Write-Host "  ❌ Failed to copy coverage file"
+                exit 1
+              }
+            }
+          } else {
+            Write-Host "No test projects found, skipping tests"
+          }
       
       - name: End SonarCloud Scan
         if: always()
-        continue-on-error: true
         shell: powershell
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          try {
-            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
-          } catch {
-            Write-Host "SonarScanner end completed with warnings"
+          
+          # Verify coverage file exists
+          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
+          if (Test-Path $coverageFile) {
+            Write-Host "✅ Coverage file found: $coverageFile"
+            $fileInfo = Get-Item $coverageFile
+            Write-Host "   Size: $($fileInfo.Length) bytes"
+          } else {
+            Write-Host "⚠️ Coverage file not found, continuing without coverage"
           }
+          
+          # End SonarCloud scan
+          Write-Host "Ending SonarCloud scan..."
+          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ SonarScanner end failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          
+          Write-Host "✅ SonarCloud scan completed successfully"
+      
+      - name: Verify report file exists
+        if: always()
+        shell: powershell
+        id: verify-report
+        run: |
+          $reportFile = ".sonarqube/report-task.txt"
+          if (Test-Path $reportFile) {
+            Write-Host "✅ Report file found: $reportFile"
+            Write-Host "File contents:"
+            Get-Content $reportFile
+            Write-Host "reportExists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "❌ Report file not found: $reportFile"
+            Write-Host "Checking for .sonarqube directory..."
+            if (Test-Path ".sonarqube") {
+              Write-Host "Contents of .sonarqube:"
+              Get-ChildItem -Path ".sonarqube" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            } else {
+              Write-Host ".sonarqube directory does not exist"
+            }
+            Write-Host "reportExists=false" >> $env:GITHUB_OUTPUT
+          }
+      
+      - name: Upload SonarQube Quality Gate status
+        if: always() && steps.verify-report.outputs.reportExists == 'true'
+        uses: sonarsource/sonarqube-quality-gate-action@95b1cc6c02a15c8ecc00c07b1c2a75ed61a14055
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: .sonarqube/report-task.txt
