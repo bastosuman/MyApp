@@ -153,7 +153,7 @@ jobs:
       
       - name: Upload SonarQube Quality Gate status
         if: always() && steps.verify-report.outputs.reportExists == 'true'
-        uses: sonarsource/sonarqube-quality-gate-action@master
+        uses: sonarsource/sonarqube-quality-gate-action@95b1cc6c02a15c8ecc00c07b1c2a75ed61a14055
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
