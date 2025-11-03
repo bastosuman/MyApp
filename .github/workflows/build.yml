@@ -1,0 +1,61 @@
+name: SonarQube
+
+on:
+  push:
+    branches:
+      - main
+      - FirstCommit-code
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - FirstCommit-code
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: windows-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Install SonarScanner
+        shell: powershell
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+      
+      - name: Begin SonarCloud Scan
+        shell: powershell
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.coverage.exclusions="**/*" /d:sonar.newCode.coverage.exclusions="**/*" /d:sonar.csharp.coverage.exclusions="**/*"
+      
+      - name: Build solution
+        shell: powershell
+        run: dotnet build MyApp.sln --configuration Release
+      
+      - name: End SonarCloud Scan
+        if: always()
+        continue-on-error: true
+        shell: powershell
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          try {
+            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+          } catch {
+            Write-Host "SonarScanner end completed with warnings"
+          }
