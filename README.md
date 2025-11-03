@@ -29,13 +29,20 @@ A full-stack financial services application built with .NET 8 (C# and VB.NET) an
    ```
 
 2. **Configure Connection String**:
-   Update `MyApp/appsettings.json` with your SQL Server instance:
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Server=YOUR_SERVER\\INSTANCE;Database=MyAppFinancial;Trusted_Connection=True;TrustServerCertificate=True;"
-     }
-   }
+   
+   **Important**: The base `appsettings.json` uses `localhost` to avoid hardcoding personal SQL Server instances. For personal development instances, use **User Secrets** instead of modifying `appsettings.json` directly:
+   
+   ```powershell
+   cd MyApp
+   dotnet user-secrets init
+   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=YOUR_SERVER\INSTANCE;Database=MyAppFinancial;Trusted_Connection=True;TrustServerCertificate=True;"
+   ```
+   
+   This ensures personal connection strings are not committed to source control. The application will automatically use User Secrets when available, which take precedence over `appsettings.json`.
+   
+   Alternatively, you can override via environment variables:
+   ```powershell
+   $env:ConnectionStrings__DefaultConnection = "Server=YOUR_SERVER\INSTANCE;Database=MyAppFinancial;Trusted_Connection=True;TrustServerCertificate=True;"
    ```
 
 3. **Create and Apply Migrations**:
