@@ -51,7 +51,7 @@ namespace MyApp.Data.Migrations
                     MinTermMonths = table.Column<int>(type: "int", nullable: false),
                     MaxTermMonths = table.Column<int>(type: "int", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Description = table.Column<string>(type: TypeNvarcharMax, nullable: false)
                 },
                 constraints: table =>
                 {
