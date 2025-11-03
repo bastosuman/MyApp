@@ -169,41 +169,140 @@ jobs:
             Write-Host "✅ Coverage file found: $coverageFile"
             $fileInfo = Get-Item $coverageFile
             Write-Host "   Size: $($fileInfo.Length) bytes"
+            
+            # Verify it's valid XML
+            try {
+              [xml]$null = Get-Content $coverageFile
+              Write-Host "   ✅ Coverage file is valid XML"
+            } catch {
+              Write-Host "   ⚠️ Coverage file may not be valid XML: $_"
+            }
           } else {
             Write-Host "⚠️ Coverage file not found, continuing without coverage"
           }
           
+          # Ensure .sonarqube directory exists
+          $sonarDir = "${{ github.workspace }}/.sonarqube"
+          if (-not (Test-Path $sonarDir)) {
+            New-Item -ItemType Directory -Path $sonarDir -Force | Out-Null
+            Write-Host "Created .sonarqube directory"
+          }
+          
           # End SonarCloud scan
           Write-Host "Ending SonarCloud scan..."
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Workspace: ${{ github.workspace }}"
+          
           dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
           
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "❌ SonarScanner end failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
+          $exitCode = $LASTEXITCODE
+          Write-Host "SonarScanner end command exited with code: $exitCode"
+          
+          if ($exitCode -ne 0) {
+            Write-Host "❌ SonarScanner end failed with exit code $exitCode"
+            Write-Host "Checking for .sonarqube directory..."
+            if (Test-Path $sonarDir) {
+              Write-Host "Contents of .sonarqube:"
+              Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            }
+            exit $exitCode
           }
           
           Write-Host "✅ SonarCloud scan completed successfully"
+          
+          # Verify report file was created
+          $reportFile = "${{ github.workspace }}/.sonarqube/report-task.txt"
+          if (Test-Path $reportFile) {
+            Write-Host "✅ Report file created: $reportFile"
+            Write-Host "Report file contents:"
+            Get-Content $reportFile
+          } else {
+            Write-Host "⚠️ Report file not found at expected location: $reportFile"
+            Write-Host "Searching for report-task.txt..."
+            $foundReports = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "report-task.txt" -ErrorAction SilentlyContinue
+            if ($foundReports) {
+              Write-Host "Found report files:"
+              foreach ($report in $foundReports) {
+                Write-Host "  $($report.FullName)"
+                Write-Host "  Contents:"
+                Get-Content $report.FullName
+              }
+            } else {
+              Write-Host "No report-task.txt files found anywhere"
+            }
+          }
       
       - name: Verify report file exists
         if: always()
         shell: powershell
         id: verify-report
         run: |
-          $reportFile = ".sonarqube/report-task.txt"
-          if (Test-Path $reportFile) {
-            Write-Host "✅ Report file found: $reportFile"
-            Write-Host "File contents:"
-            Get-Content $reportFile
-            Write-Host "reportExists=true" >> $env:GITHUB_OUTPUT
+          # Check both relative and absolute paths
+          $reportFileRelative = ".sonarqube/report-task.txt"
+          $reportFileAbsolute = "${{ github.workspace }}/.sonarqube/report-task.txt"
+          
+          Write-Host "Checking for report file..."
+          Write-Host "  Relative path: $reportFileRelative"
+          Write-Host "  Absolute path: $reportFileAbsolute"
+          Write-Host "  Current directory: $(Get-Location)"
+          Write-Host "  Workspace: ${{ github.workspace }}"
+          
+          $reportFound = $false
+          $reportPath = $null
+          
+          if (Test-Path $reportFileRelative) {
+            $reportFound = $true
+            $reportPath = $reportFileRelative
+            Write-Host "✅ Report file found at relative path: $reportFileRelative"
+          } elseif (Test-Path $reportFileAbsolute) {
+            $reportFound = $true
+            $reportPath = $reportFileAbsolute
+            Write-Host "✅ Report file found at absolute path: $reportFileAbsolute"
           } else {
-            Write-Host "❌ Report file not found: $reportFile"
-            Write-Host "Checking for .sonarqube directory..."
-            if (Test-Path ".sonarqube") {
-              Write-Host "Contents of .sonarqube:"
-              Get-ChildItem -Path ".sonarqube" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
-            } else {
-              Write-Host ".sonarqube directory does not exist"
+            Write-Host "⚠️ Report file not found at expected locations"
+            
+            # Search for it
+            Write-Host "Searching for report-task.txt in workspace..."
+            $foundReports = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "report-task.txt" -ErrorAction SilentlyContinue
+            if ($foundReports) {
+              Write-Host "Found report files:"
+              foreach ($report in $foundReports) {
+                Write-Host "  $($report.FullName)"
+                $reportFound = $true
+                $reportPath = $report.FullName
+              }
             }
+            
+            # Check .sonarqube directory contents
+            Write-Host "Checking .sonarqube directory contents..."
+            $sonarDir = "${{ github.workspace }}/.sonarqube"
+            if (Test-Path $sonarDir) {
+              Write-Host "Contents of .sonarqube:"
+              Get-ChildItem -Path $sonarDir -Recurse | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.FullName)" }
+              
+              # Look for any .txt files
+              $txtFiles = Get-ChildItem -Path $sonarDir -Recurse -Filter "*.txt" -ErrorAction SilentlyContinue
+              if ($txtFiles) {
+                Write-Host "Found .txt files in .sonarqube:"
+                foreach ($txt in $txtFiles) {
+                  Write-Host "  $($txt.FullName)"
+                  Write-Host "  Contents:"
+                  Get-Content $txt.FullName
+                }
+              }
+            } else {
+              Write-Host ".sonarqube directory does not exist at: $sonarDir"
+            }
+          }
+          
+          if ($reportFound -and $reportPath) {
+            Write-Host "✅ Report file exists: $reportPath"
+            Write-Host "File contents:"
+            Get-Content $reportPath
+            Write-Host "reportExists=true" >> $env:GITHUB_OUTPUT
+            Write-Host "reportPath=$reportPath" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "❌ Report file not found"
             Write-Host "reportExists=false" >> $env:GITHUB_OUTPUT
           }
       
@@ -214,4 +313,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          scanMetadataReportFile: .sonarqube/report-task.txt
+          scanMetadataReportFile: ${{ steps.verify-report.outputs.reportPath || '.sonarqube/report-task.txt' }}
