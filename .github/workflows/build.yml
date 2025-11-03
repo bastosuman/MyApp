@@ -30,13 +30,16 @@ jobs:
       
       - name: Install SonarScanner
         shell: powershell
-        run: dotnet tool install --global dotnet-sonarscanner
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
       
       - name: Begin SonarCloud Scan
         shell: powershell
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io"
       
       - name: Build solution
@@ -48,13 +51,6 @@ jobs:
         shell: powershell
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
-      
-      - name: Upload SonarQube Quality Gate status
-        if: always()
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          scanMetadataReportFile: .sonarqube/report-task.txt
+        run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
