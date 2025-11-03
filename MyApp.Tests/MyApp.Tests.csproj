@@ -12,17 +12,28 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="coverlet.msbuild" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
+  
+  <PropertyGroup>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverageFormat>opencover</CoverageFormat>
+    <CoverletOutputFormat>opencover</CoverletOutputFormat>
+    <CoverletOutput>$(MSBuildProjectDirectory)/coverage.opencover.xml</CoverletOutput>
+  </PropertyGroup>
+  
   <ItemGroup>
     <ProjectReference Include="..\MyApp\MyApp.csproj" />
     <ProjectReference Include="..\MyApp.Services.VB\MyApp.Services.VB.vbproj" />

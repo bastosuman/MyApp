@@ -84,13 +84,15 @@ jobs:
           
           Write-Host "Running tests with coverage collection..."
           
-          # Run tests with coverage collection
+          # Run tests with coverage collection using coverlet.msbuild
           dotnet test MyApp.sln `
             --configuration Release `
-            --collect:"XPlat Code Coverage" `
-            --results-directory:"${{ runner.temp }}/TestResults" `
-            --settings:"MyApp.Tests/coverlet.runsettings" `
+            /p:CollectCoverage=true `
+            /p:CoverletOutputFormat=opencover `
+            /p:CoverletOutput="${{ github.workspace }}/coverage.opencover.xml" `
+            /p:Exclude="[*.Tests]*,[*.Migrations]*,[*]*Program" `
             --logger:"trx;LogFileName=test-results.trx" `
+            --results-directory:"${{ runner.temp }}/TestResults" `
             --verbosity normal
           
           if ($LASTEXITCODE -ne 0) {
@@ -98,50 +100,8 @@ jobs:
             # Don't exit - we still want to try to get coverage
           }
           
-          # Find and copy coverage files
-          Write-Host "Searching for coverage files in ${{ runner.temp }}/TestResults..."
-          $coverageFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.opencover.xml" -ErrorAction SilentlyContinue
-          
-          if ($coverageFiles -eq $null -or $coverageFiles.Count -eq 0) {
-            Write-Host "⚠️ No coverage.opencover.xml files found!"
-            Write-Host "Searching for any XML files in TestResults:"
-            Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" -ErrorAction SilentlyContinue | ForEach-Object { 
-              Write-Host "  Found: $($_.FullName) ($($_.Length) bytes)"
-            }
-            
-            # Try alternative locations
-            Write-Host "Searching in alternative locations..."
-            $altPaths = @(
-              "${{ runner.temp }}/TestResults",
-              "${{ github.workspace }}/TestResults",
-              "${{ github.workspace }}/**/coverage.opencover.xml"
-            )
-            
-            foreach ($altPath in $altPaths) {
-              $found = Get-ChildItem -Path $altPath -Recurse -Filter "*.xml" -ErrorAction SilentlyContinue
-              if ($found) {
-                Write-Host "  Found in $altPath : $($found.Count) file(s)"
-              }
-            }
-            
-            Write-Host "⚠️ Continuing without coverage file - SonarQube will run without coverage data"
-            exit 0
-          }
-          
-          Write-Host "Found $($coverageFiles.Count) coverage file(s)"
-          
-          # Merge multiple coverage files if needed
+          # Verify coverage file was created
           $destPath = "${{ github.workspace }}/coverage.opencover.xml"
-          
-          if ($coverageFiles.Count -eq 1) {
-            # Single file - just copy it
-            Copy-Item -Path $coverageFiles[0].FullName -Destination $destPath -Force
-            Write-Host "  ✅ Copied single coverage file to: $destPath"
-          } else {
-            # Multiple files - need to merge (for now, use the first one)
-            Write-Host "  ⚠️ Multiple coverage files found, using the first one"
-            Copy-Item -Path $coverageFiles[0].FullName -Destination $destPath -Force
-          }
           
           if (Test-Path $destPath) {
             $destFile = Get-Item $destPath
@@ -151,8 +111,20 @@ jobs:
             Write-Host "  Coverage file preview (first 5 lines):"
             Get-Content $destPath -TotalCount 5 | ForEach-Object { Write-Host "    $_" }
           } else {
-            Write-Host "  ❌ Failed to copy coverage file"
-            exit 1
+            Write-Host "  ❌ Coverage file not found at: $destPath"
+            Write-Host "  Searching for coverage files..."
+            
+            # Search for any coverage files
+            $coverageFiles = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage*.xml" -ErrorAction SilentlyContinue
+            if ($coverageFiles) {
+              Write-Host "  Found coverage files:"
+              foreach ($file in $coverageFiles) {
+                Write-Host "    $($file.FullName) ($($file.Length) bytes)"
+              }
+            } else {
+              Write-Host "  ⚠️ No coverage files found anywhere"
+              Write-Host "  ⚠️ Continuing without coverage file - SonarQube will run without coverage data"
+            }
           }
       
       - name: End SonarCloud Scan
