@@ -40,11 +40,20 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.coverage.exclusions="**/*" /d:sonar.newCode.coverage.exclusions="**/*" /d:sonar.csharp.coverage.exclusions="**/*"
+          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
       
       - name: Build solution
         shell: powershell
-        run: dotnet build MyApp.sln --configuration Release
+        run: dotnet build MyApp.sln --configuration Release --no-incremental
+      
+      - name: Run tests with coverage
+        shell: powershell
+        run: |
+          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
+            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+          } else {
+            Write-Host "No test projects found, skipping tests"
+          }
       
       - name: End SonarCloud Scan
         if: always()
