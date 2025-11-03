@@ -13,106 +13,82 @@ public static class DbInitializer
     /// </summary>
     public static void Seed(ApplicationDbContext context)
     {
-        // Seed Products (only if they don't exist)
-        if (!context.Products.Any())
-        {
-            var products = new List<Product>
-            {
-            new Product
-            {
-                Name = "Personal Loan",
-                ProductType = "Loan",
-                MinAmount = 1000.00m,
-                MaxAmount = 50000.00m,
-                InterestRate = 5.5m,
-                MinTermMonths = 12,
-                MaxTermMonths = 60,
-                IsActive = true,
-                Description = "Flexible personal loans for various needs with competitive rates."
-            },
-            new Product
-            {
-                Name = "Home Loan",
-                ProductType = "Mortgage",
-                MinAmount = 50000.00m,
-                MaxAmount = 500000.00m,
-                InterestRate = 4.2m,
-                MinTermMonths = 60,
-                MaxTermMonths = 360,
-                IsActive = true,
-                Description = "Mortgage loans for home purchase or refinancing with attractive rates."
-            },
-            new Product
-            {
-                Name = "Credit Card",
-                ProductType = "Credit",
-                MinAmount = 500.00m,
-                MaxAmount = 10000.00m,
-                InterestRate = 18.9m,
-                MinTermMonths = 1,
-                MaxTermMonths = 60,
-                IsActive = true,
-                Description = "Credit card with flexible repayment options and rewards program."
-            },
-            new Product
-            {
-                Name = "Savings Account",
-                ProductType = "Deposit",
-                MinAmount = 0.00m,
-                MaxAmount = 1000000.00m,
-                InterestRate = 2.5m,
-                MinTermMonths = 0,
-                MaxTermMonths = 0,
-                IsActive = true,
-                Description = "High-yield savings account with competitive interest rates."
-            }
-        };
-
-            context.Products.AddRange(products);
-        }
-
-        // Seed Accounts (only if they don't exist)
-        if (!context.Accounts.Any())
-        {
-            var accounts = new List<Account>
-            {
-            new Account
-            {
-                AccountNumber = "ACC001",
-                FirstName = "John",
-                LastName = "Doe",
-                Email = "john.doe@example.com",
-                Phone = "+1-555-0101",
-                DateCreated = DateTime.UtcNow.AddDays(-30),
-                IsActive = true
-            },
-            new Account
-            {
-                AccountNumber = "ACC002",
-                FirstName = "Jane",
-                LastName = "Smith",
-                Email = "jane.smith@example.com",
-                Phone = "+1-555-0102",
-                DateCreated = DateTime.UtcNow.AddDays(-15),
-                IsActive = true
-            },
-            new Account
-            {
-                AccountNumber = "ACC003",
-                FirstName = "Robert",
-                LastName = "Johnson",
-                Email = "robert.johnson@example.com",
-                Phone = "+1-555-0103",
-                DateCreated = DateTime.UtcNow.AddDays(-7),
-                IsActive = true
-            }
-        };
-
-            context.Accounts.AddRange(accounts);
-        }
-
-        // Save all changes (only if there are any pending changes)
+        SeedProducts(context);
+        SeedAccounts(context);
         context.SaveChanges();
+    }
+
+    private static void SeedProducts(ApplicationDbContext context)
+    {
+        if (context.Products.Any()) return;
+
+        var products = GetSeedProducts();
+        context.Products.AddRange(products);
+    }
+
+    private static void SeedAccounts(ApplicationDbContext context)
+    {
+        if (context.Accounts.Any()) return;
+
+        var accounts = GetSeedAccounts();
+        context.Accounts.AddRange(accounts);
+    }
+
+    private static List<Product> GetSeedProducts()
+    {
+        return new List<Product>
+        {
+            CreateProduct("Personal Loan", "Loan", 1000.00m, 50000.00m, 5.5m, 12, 60, 
+                "Flexible personal loans for various needs with competitive rates."),
+            CreateProduct("Home Loan", "Mortgage", 50000.00m, 500000.00m, 4.2m, 60, 360, 
+                "Mortgage loans for home purchase or refinancing with attractive rates."),
+            CreateProduct("Credit Card", "Credit", 500.00m, 10000.00m, 18.9m, 1, 60, 
+                "Credit card with flexible repayment options and rewards program."),
+            CreateProduct("Savings Account", "Deposit", 0.00m, 1000000.00m, 2.5m, 0, 0, 
+                "High-yield savings account with competitive interest rates.")
+        };
+    }
+
+    private static List<Account> GetSeedAccounts()
+    {
+        return new List<Account>
+        {
+            CreateAccount("ACC001", "John", "Doe", "john.doe@example.com", "+1-555-0101", -30),
+            CreateAccount("ACC002", "Jane", "Smith", "jane.smith@example.com", "+1-555-0102", -15),
+            CreateAccount("ACC003", "Robert", "Johnson", "robert.johnson@example.com", "+1-555-0103", -7)
+        };
+    }
+
+    private static Product CreateProduct(string name, string productType, decimal minAmount, 
+        decimal maxAmount, decimal interestRate, int minTermMonths, int maxTermMonths, string description)
+    {
+        return new Product
+        {
+            Name = name,
+            ProductType = productType,
+            MinAmount = minAmount,
+            MaxAmount = maxAmount,
+            InterestRate = interestRate,
+            MinTermMonths = minTermMonths,
+            MaxTermMonths = maxTermMonths,
+            IsActive = true,
+            Description = description
+        };
+    }
+
+    private static Account CreateAccount(string accountNumber, string firstName, string lastName, 
+        string email, string phone, int daysOffset)
+    {
+        return new Account
+        {
+            AccountNumber = accountNumber,
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            Phone = phone,
+            DateCreated = DateTime.UtcNow.AddDays(daysOffset),
+            IsActive = true
+        };
     }
 }
 
