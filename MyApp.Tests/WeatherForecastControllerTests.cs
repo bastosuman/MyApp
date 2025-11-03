@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using MyApp;
 using MyApp.Controllers;
 using Xunit;
 
@@ -68,6 +69,80 @@ namespace MyApp.Tests
             {
                 var expectedDate = today.AddDays(i + 1);
                 Assert.Equal(expectedDate, result[i].Date);
+            }
+        }
+
+        [Fact]
+        public void Get_ReturnsForecastsWithTemperatureInRange()
+        {
+            // Arrange
+            var controller = new WeatherForecastController();
+
+            // Act
+            var result = controller.Get().ToArray();
+
+            // Assert
+            foreach (var forecast in result)
+            {
+                Assert.True(forecast.TemperatureC >= -20, $"Temperature {forecast.TemperatureC} should be >= -20");
+                Assert.True(forecast.TemperatureC < 55, $"Temperature {forecast.TemperatureC} should be < 55");
+            }
+        }
+
+        [Fact]
+        public void Get_ReturnsForecastsWithValidSummaries()
+        {
+            // Arrange
+            var controller = new WeatherForecastController();
+            var validSummaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
+
+            // Act
+            var result = controller.Get().ToArray();
+
+            // Assert
+            foreach (var forecast in result)
+            {
+                Assert.Contains(forecast.Summary, validSummaries);
+            }
+        }
+
+        [Fact]
+        public void Get_ReturnsForecastsWithCorrectTemperatureFCalculation()
+        {
+            // Arrange
+            var controller = new WeatherForecastController();
+
+            // Act
+            var result = controller.Get().ToArray();
+
+            // Assert
+            foreach (var forecast in result)
+            {
+                var expectedF = 32 + (int)(forecast.TemperatureC / 0.5556);
+                Assert.Equal(expectedF, forecast.TemperatureF);
+            }
+        }
+
+        [Fact]
+        public void Get_MultipleCallsReturnValidForecasts()
+        {
+            // Arrange
+            var controller = new WeatherForecastController();
+
+            // Act
+            var results = new List<IEnumerable<WeatherForecast>>();
+            for (int i = 0; i < 10; i++)
+            {
+                results.Add(controller.Get());
+            }
+
+            // Assert
+            foreach (var result in results)
+            {
+                var forecasts = result.ToArray();
+                Assert.Equal(5, forecasts.Length);
+                Assert.All(forecasts, f => Assert.NotNull(f));
+                Assert.All(forecasts, f => Assert.NotNull(f.Summary));
             }
         }
     }
