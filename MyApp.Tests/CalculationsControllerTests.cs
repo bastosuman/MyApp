@@ -124,15 +124,15 @@ public class CalculationsControllerTests
     }
 
     [Theory]
-    [InlineData(1000m, 3.5m, 6)]
-    [InlineData(50000m, 7.25m, 24)]
-    [InlineData(250000m, 4.2m, 360)]
-    public void CalculateInterest_VariousValidInputs_ReturnsOk(decimal principal, decimal rate, int term)
+    [InlineData(1000.0, 3.5, 6)]
+    [InlineData(50000.0, 7.25, 24)]
+    [InlineData(250000.0, 4.2, 360)]
+    public void CalculateInterest_VariousValidInputs_ReturnsOk(double principal, double rate, int term)
     {
         // Arrange
-        var request = new InterestCalculationRequest(principal, rate, term);
-        var expectedInterest = principal * (rate / 100) * (term / 12m);
-        _mockCalculationService.Setup(x => x.CalculateInterest(principal, rate, term))
+        var request = new InterestCalculationRequest((decimal)principal, (decimal)rate, term);
+        var expectedInterest = (decimal)principal * ((decimal)rate / 100) * (term / 12m);
+        _mockCalculationService.Setup(x => x.CalculateInterest((decimal)principal, (decimal)rate, term))
             .Returns(expectedInterest);
 
         // Act
@@ -140,7 +140,7 @@ public class CalculationsControllerTests
 
         // Assert
         Assert.IsType<OkObjectResult>(result);
-        _mockCalculationService.Verify(x => x.CalculateInterest(principal, rate, term), Times.Once);
+        _mockCalculationService.Verify(x => x.CalculateInterest((decimal)principal, (decimal)rate, term), Times.Once);
     }
 
     #endregion
@@ -232,17 +232,17 @@ public class CalculationsControllerTests
     }
 
     [Theory]
-    [InlineData(50000m, 4.5m, 240)]
-    [InlineData(200000m, 6.0m, 180)]
-    [InlineData(10000m, 8.0m, 60)]
-    public void CalculateMonthlyPayment_VariousValidInputs_ReturnsOk(decimal principal, decimal rate, int term)
+    [InlineData(50000.0, 4.5, 240)]
+    [InlineData(200000.0, 6.0, 180)]
+    [InlineData(10000.0, 8.0, 60)]
+    public void CalculateMonthlyPayment_VariousValidInputs_ReturnsOk(double principal, double rate, int term)
     {
         // Arrange
-        var request = new PaymentCalculationRequest(principal, rate, term);
+        var request = new PaymentCalculationRequest((decimal)principal, (decimal)rate, term);
         var expectedMonthlyPayment = 500m;
         var expectedTotalPayment = 120000m;
 
-        _mockCalculationService.Setup(x => x.CalculateMonthlyPayment(principal, rate, term))
+        _mockCalculationService.Setup(x => x.CalculateMonthlyPayment((decimal)principal, (decimal)rate, term))
             .Returns(expectedMonthlyPayment);
         _mockCalculationService.Setup(x => x.CalculateTotalPayment(expectedMonthlyPayment, term))
             .Returns(expectedTotalPayment);
@@ -252,7 +252,7 @@ public class CalculationsControllerTests
 
         // Assert
         Assert.IsType<OkObjectResult>(result);
-        _mockCalculationService.Verify(x => x.CalculateMonthlyPayment(principal, rate, term), Times.Once);
+        _mockCalculationService.Verify(x => x.CalculateMonthlyPayment((decimal)principal, (decimal)rate, term), Times.Once);
         _mockCalculationService.Verify(x => x.CalculateTotalPayment(expectedMonthlyPayment, term), Times.Once);
     }
 
@@ -361,15 +361,15 @@ public class CalculationsControllerTests
     }
 
     [Theory]
-    [InlineData(10000m, 2000m, 72, false)]
-    [InlineData(3000m, 1000m, 36, true)]
-    [InlineData(7500m, 2500m, 48, false)]
-    public void CalculateCreditScore_VariousValidInputs_ReturnsOk(decimal income, decimal debt, int history, bool bankruptcy)
+    [InlineData(10000.0, 2000.0, 72, false)]
+    [InlineData(3000.0, 1000.0, 36, true)]
+    [InlineData(7500.0, 2500.0, 48, false)]
+    public void CalculateCreditScore_VariousValidInputs_ReturnsOk(double income, double debt, int history, bool bankruptcy)
     {
         // Arrange
-        var request = new CreditScoreRequest(income, debt, history, bankruptcy);
+        var request = new CreditScoreRequest((decimal)income, (decimal)debt, history, bankruptcy);
         var expectedScore = 600;
-        _mockCalculationService.Setup(x => x.CalculateCreditScore(income, debt, history, bankruptcy))
+        _mockCalculationService.Setup(x => x.CalculateCreditScore((decimal)income, (decimal)debt, history, bankruptcy))
             .Returns(expectedScore);
 
         // Act
@@ -377,7 +377,7 @@ public class CalculationsControllerTests
 
         // Assert
         Assert.IsType<OkObjectResult>(result);
-        _mockCalculationService.Verify(x => x.CalculateCreditScore(income, debt, history, bankruptcy), Times.Once);
+        _mockCalculationService.Verify(x => x.CalculateCreditScore((decimal)income, (decimal)debt, history, bankruptcy), Times.Once);
     }
 
     [Fact]

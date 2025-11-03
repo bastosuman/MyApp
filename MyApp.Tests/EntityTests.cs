@@ -125,6 +125,78 @@ public class TransactionEntityTests
         // Act & Assert
         Assert.Null(transaction.Account);
     }
+
+    [Fact]
+    public void Transaction_TransactionTypeDefaultsToEmptyString()
+    {
+        // Arrange
+        var transaction = new Transaction();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, transaction.TransactionType);
+    }
+
+    [Fact]
+    public void Transaction_DescriptionDefaultsToEmptyString()
+    {
+        // Arrange
+        var transaction = new Transaction();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, transaction.Description);
+    }
+
+    [Fact]
+    public void Transaction_StatusDefaultsToEmptyString()
+    {
+        // Arrange
+        var transaction = new Transaction();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, transaction.Status);
+    }
+
+    [Fact]
+    public void Transaction_CanSetTransactionType()
+    {
+        // Arrange
+        var transaction = new Transaction();
+        var transactionType = "Withdrawal";
+
+        // Act
+        transaction.TransactionType = transactionType;
+
+        // Assert
+        Assert.Equal(transactionType, transaction.TransactionType);
+    }
+
+    [Fact]
+    public void Transaction_CanSetDescription()
+    {
+        // Arrange
+        var transaction = new Transaction();
+        var description = "Payment for services";
+
+        // Act
+        transaction.Description = description;
+
+        // Assert
+        Assert.Equal(description, transaction.Description);
+    }
+
+    [Fact]
+    public void Transaction_CanSetStatus()
+    {
+        // Arrange
+        var transaction = new Transaction();
+        var status = "Pending";
+
+        // Act
+        transaction.Status = status;
+
+        // Assert
+        Assert.Equal(status, transaction.Status);
+    }
 }
 
 public class ApplicationEntityTests
