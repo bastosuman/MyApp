@@ -50,18 +50,34 @@ jobs:
             Write-Host "No test projects found, skipping tests"
           }
       
-      - name: Install SonarScanner for .NET
-        shell: powershell
-        run: |
-          dotnet tool install --global dotnet-sonarscanner || dotnet tool update --global dotnet-sonarscanner
-          Write-Host "SonarScanner for .NET installed successfully"
-      
-      - name: Begin SonarCloud Scan
+      - name: Install and Run SonarCloud Scan
         shell: powershell
         working-directory: ${{ github.workspace }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          # Install SonarScanner for .NET
+          Write-Host "Installing SonarScanner for .NET..."
+          dotnet tool install --global dotnet-sonarscanner 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Tool may already be installed, updating..."
+            dotnet tool update --global dotnet-sonarscanner
+          }
+          
+          # Refresh PATH to include dotnet tools
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          
+          # Verify tool is available
+          $toolPath = (dotnet tool list --global | Select-String "dotnet-sonarscanner")
+          if (-not $toolPath) {
+            Write-Host "ERROR: dotnet-sonarscanner not found after installation"
+            dotnet tool list --global
+            exit 1
+          }
+          Write-Host "SonarScanner installed successfully"
+          
+          # Begin SonarCloud analysis
+          Write-Host "Starting SonarCloud analysis..."
           dotnet sonarscanner begin `
             /k:"bastosuman_MyApp" `
             /o:"bastosuman" `
@@ -71,35 +87,52 @@ jobs:
             /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
           
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: SonarScanner begin failed"
+            Write-Host "ERROR: SonarScanner begin failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
           }
+          Write-Host "SonarCloud analysis started successfully"
       
-      - name: End SonarCloud Scan
+      - name: End SonarCloud Scan and Verify
         if: always()
         shell: powershell
         working-directory: ${{ github.workspace }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          # Refresh PATH to include dotnet tools
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          
+          Write-Host "Ending SonarCloud analysis..."
           dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
           
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: SonarScanner end failed"
+            Write-Host "ERROR: SonarScanner end failed with exit code $LASTEXITCODE"
+            Write-Host "Current directory: $(Get-Location)"
+            Write-Host "Checking for .scannerwork directory..."
+            if (Test-Path ".scannerwork") {
+              Get-ChildItem -Path ".scannerwork" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            }
             exit $LASTEXITCODE
           }
+          
+          Write-Host "SonarCloud analysis completed"
           
           # Verify report file was created
           if (-Not (Test-Path ".scannerwork/report-task.txt")) {
             Write-Host "ERROR: Report file not found. Current directory: $(Get-Location)"
+            Write-Host "Directory contents:"
+            Get-ChildItem | ForEach-Object { Write-Host "  $($_.Name)" }
             if (Test-Path ".scannerwork") {
               Write-Host "Contents of .scannerwork:"
               Get-ChildItem -Path ".scannerwork" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            } else {
+              Write-Host ".scannerwork directory does not exist"
             }
             exit 1
           }
           
-          Write-Host "Report file created successfully"
+          Write-Host "Report file created successfully: .scannerwork/report-task.txt"
+          Write-Host "Report file contents:"
           Get-Content ".scannerwork/report-task.txt"
       
       - name: Upload SonarQube Quality Gate status
