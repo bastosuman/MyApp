@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - FirstCommit-code
+      - '**'  # Trigger on all branches
   pull_request:
     types: [opened, synchronize, reopened]
     branches:
       - main
       - master
       - FirstCommit-code
+      - '**'  # Also trigger on PRs to any branch
 
 jobs:
   build:
@@ -85,46 +87,60 @@ jobs:
           Write-Host "Running tests with coverage collection..."
           
           # Run tests with coverage collection using coverlet.msbuild
+          # Use DataCollectionRunSettings to ensure proper coverage collection
           dotnet test MyApp.sln `
             --configuration Release `
             /p:CollectCoverage=true `
             /p:CoverletOutputFormat=opencover `
             /p:CoverletOutput="${{ github.workspace }}/coverage.opencover.xml" `
+            /p:CoverletOutputDirectory="${{ github.workspace }}" `
             /p:Exclude="[*.Tests]*,[*.Migrations]*,[*]*Program" `
+            /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" `
             --logger:"trx;LogFileName=test-results.trx" `
             --results-directory:"${{ runner.temp }}/TestResults" `
-            --verbosity normal
+            --verbosity normal `
+            --settings:"MyApp.Tests/coverlet.runsettings"
           
           if ($LASTEXITCODE -ne 0) {
             Write-Host "⚠️ Tests failed with exit code $LASTEXITCODE"
             # Don't exit - we still want to try to get coverage
           }
           
-          # Verify coverage file was created
+          # Verify coverage file was created and copy to workspace root if needed
           $destPath = "${{ github.workspace }}/coverage.opencover.xml"
+          
+          # Search for coverage files in test project directories
+          $coverageFiles = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage.opencover.xml" -ErrorAction SilentlyContinue
+          if ($coverageFiles) {
+            Write-Host "  Found coverage files:"
+            foreach ($file in $coverageFiles) {
+              Write-Host "    $($file.FullName) ($($file.Length) bytes)"
+              # Copy to workspace root if not already there
+              if ($file.FullName -ne $destPath) {
+                Copy-Item -Path $file.FullName -Destination $destPath -Force
+                Write-Host "    ✅ Copied to workspace root: $destPath"
+              }
+            }
+          }
           
           if (Test-Path $destPath) {
             $destFile = Get-Item $destPath
             Write-Host "  ✅ Coverage file ready: $destPath ($($destFile.Length) bytes)"
             
+            # Verify it contains actual coverage data
+            $content = Get-Content $destPath -Raw
+            if ($content -match "class name") {
+              Write-Host "  ✅ Coverage file contains class data"
+            } else {
+              Write-Host "  ⚠️ Coverage file may be empty or invalid"
+            }
+            
             # Show first few lines to verify it's valid XML
-            Write-Host "  Coverage file preview (first 5 lines):"
-            Get-Content $destPath -TotalCount 5 | ForEach-Object { Write-Host "    $_" }
+            Write-Host "  Coverage file preview (first 10 lines):"
+            Get-Content $destPath -TotalCount 10 | ForEach-Object { Write-Host "    $_" }
           } else {
             Write-Host "  ❌ Coverage file not found at: $destPath"
-            Write-Host "  Searching for coverage files..."
-            
-            # Search for any coverage files
-            $coverageFiles = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage*.xml" -ErrorAction SilentlyContinue
-            if ($coverageFiles) {
-              Write-Host "  Found coverage files:"
-              foreach ($file in $coverageFiles) {
-                Write-Host "    $($file.FullName) ($($file.Length) bytes)"
-              }
-            } else {
-              Write-Host "  ⚠️ No coverage files found anywhere"
-              Write-Host "  ⚠️ Continuing without coverage file - SonarQube will run without coverage data"
-            }
+            Write-Host "  ⚠️ Continuing without coverage file - SonarQube will run without coverage data"
           }
       
       - name: End SonarCloud Scan
