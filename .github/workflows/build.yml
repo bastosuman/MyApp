@@ -51,8 +51,35 @@ jobs:
         run: |
           if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
             dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+            
+            # Find and copy coverage files to workspace root for SonarCloud
+            $coverageFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.opencover.xml"
+            foreach ($file in $coverageFiles) {
+              Copy-Item -Path $file.FullName -Destination "${{ github.workspace }}/coverage.opencover.xml" -Force
+              Write-Host "Copied coverage file to: ${{ github.workspace }}/coverage.opencover.xml"
+            }
+            
+            # List all coverage files found
+            Write-Host "Coverage files found:"
+            Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" | ForEach-Object { Write-Host "  $($_.FullName)" }
           } else {
             Write-Host "No test projects found, skipping tests"
+          }
+      
+      - name: Verify coverage file exists
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "Checking for coverage files..."
+          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
+          if (Test-Path $coverageFile) {
+            Write-Host "✅ Coverage file found: $coverageFile"
+            $fileInfo = Get-Item $coverageFile
+            Write-Host "File size: $($fileInfo.Length) bytes"
+          } else {
+            Write-Host "⚠️ Coverage file not found at: $coverageFile"
+            Write-Host "Searching for coverage files..."
+            Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage*.xml" | ForEach-Object { Write-Host "  Found: $($_.FullName)" }
           }
       
       - name: End SonarCloud Scan
