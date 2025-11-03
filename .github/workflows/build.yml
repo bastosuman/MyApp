@@ -34,27 +34,9 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: dotnet restore MyApp.sln
       
-      - name: Build solution
+      - name: Install SonarScanner
         shell: powershell
         working-directory: ${{ github.workspace }}
-        run: |
-          dotnet build MyApp.sln --configuration Release --no-incremental
-      
-      - name: Run tests with coverage
-        shell: powershell
-        working-directory: ${{ github.workspace }}
-        run: |
-          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
-            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
-          } else {
-            Write-Host "No test projects found, skipping tests"
-          }
-      
-      - name: Install and Run SonarCloud Scan
-        shell: powershell
-        working-directory: ${{ github.workspace }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           # Install SonarScanner for .NET
           Write-Host "Installing SonarScanner for .NET..."
@@ -75,6 +57,15 @@ jobs:
             exit 1
           }
           Write-Host "SonarScanner installed successfully"
+      
+      - name: Begin SonarCloud Scan
+        shell: powershell
+        working-directory: ${{ github.workspace }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          # Refresh PATH to include dotnet tools
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
           # Begin SonarCloud analysis
           Write-Host "Starting SonarCloud analysis..."
@@ -91,6 +82,22 @@ jobs:
             exit $LASTEXITCODE
           }
           Write-Host "SonarCloud analysis started successfully"
+      
+      - name: Build solution
+        shell: powershell
+        working-directory: ${{ github.workspace }}
+        run: |
+          dotnet build MyApp.sln --configuration Release --no-incremental
+      
+      - name: Run tests with coverage
+        shell: powershell
+        working-directory: ${{ github.workspace }}
+        run: |
+          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
+            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+          } else {
+            Write-Host "No test projects found, skipping tests"
+          }
       
       - name: End SonarCloud Scan and Verify
         if: always()
