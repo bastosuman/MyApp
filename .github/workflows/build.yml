@@ -57,13 +57,21 @@ jobs:
       
       - name: Restore dependencies
         shell: powershell
+        working-directory: ${{ github.workspace }}
         run: dotnet restore MyApp.sln
       
       - name: Build and analyze
         shell: powershell
+        working-directory: ${{ github.workspace }}
         run: |
           Write-Host "Starting SonarQube analysis..."
+          Write-Host "Current working directory: $(Get-Location)"
+          Write-Host "GitHub workspace: ${{ github.workspace }}"
           Write-Host "Scanner path: ${{ runner.temp }}\scanner\dotnet-sonarscanner"
+          
+          # Ensure we're in the workspace root
+          Set-Location -Path "${{ github.workspace }}"
+          Write-Host "Changed to directory: $(Get-Location)"
           
           # Begin SonarQube analysis
           $beginResult = & "${{ runner.temp }}\scanner\dotnet-sonarscanner" begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
@@ -118,15 +126,31 @@ jobs:
       - name: Verify SonarQube report exists
         if: always()
         shell: powershell
+        working-directory: ${{ github.workspace }}
         run: |
+          # Ensure we're in the workspace root
+          Set-Location -Path "${{ github.workspace }}"
+          Write-Host "Current directory: $(Get-Location)"
+          
           if (-Not (Test-Path ".scannerwork/report-task.txt")) {
             Write-Host "ERROR: SonarQube report file .scannerwork/report-task.txt does not exist"
-            Write-Host "Current directory: $(Get-Location)"
+            Write-Host "Working directory: $(Get-Location)"
             Write-Host "Directory contents:"
             Get-ChildItem | ForEach-Object { Write-Host $_.Name }
+            Write-Host "Checking for .scannerwork directory..."
             if (Test-Path ".scannerwork") {
               Write-Host "Contents of .scannerwork:"
               Get-ChildItem -Path ".scannerwork" -Recurse | ForEach-Object { Write-Host $_.FullName }
+            } else {
+              Write-Host ".scannerwork directory does not exist in $(Get-Location)"
+              Write-Host "Searching entire workspace for .scannerwork..."
+              $scannerDirs = Get-ChildItem -Path "${{ github.workspace }}" -Directory -Recurse -Filter ".scannerwork" -ErrorAction SilentlyContinue
+              if ($scannerDirs) {
+                Write-Host "Found .scannerwork directories:"
+                $scannerDirs | ForEach-Object { Write-Host $_.FullName }
+              } else {
+                Write-Host "No .scannerwork directories found anywhere"
+              }
             }
             exit 1
           }
