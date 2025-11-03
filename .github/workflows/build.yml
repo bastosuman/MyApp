@@ -191,37 +191,62 @@ jobs:
           Write-Host "Workspace: ${{ github.workspace }}"
           
           # Change to workspace directory before ending scan (SonarScanner needs to be in project root)
-          Push-Location "${{ github.workspace }}"
-          try {
-            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
-            
-            $exitCode = $LASTEXITCODE
-            Write-Host "SonarScanner end command exited with code: $exitCode"
-            
-            if ($exitCode -ne 0) {
-              Write-Host "❌ SonarScanner end failed with exit code $exitCode"
-              Write-Host "Checking for .sonarqube directory..."
-              if (Test-Path $sonarDir) {
-                Write-Host "Contents of .sonarqube:"
-                Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
-              }
-              exit $exitCode
+          Set-Location "${{ github.workspace }}"
+          Write-Host "Current directory after Set-Location: $(Get-Location)"
+          
+          # Verify we're in the right place
+          if (-not (Test-Path "MyApp.sln")) {
+            Write-Host "⚠️ Warning: MyApp.sln not found in current directory"
+            Write-Host "Current directory contents:"
+            Get-ChildItem | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
+          }
+          
+          # End SonarScanner with verbose output
+          Write-Host "Running SonarScanner end command..."
+          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /v:diag
+          
+          $exitCode = $LASTEXITCODE
+          Write-Host "SonarScanner end command exited with code: $exitCode"
+          
+          if ($exitCode -ne 0) {
+            Write-Host "❌ SonarScanner end failed with exit code $exitCode"
+            Write-Host "This may indicate analysis errors on SonarCloud"
+            Write-Host "Checking for .sonarqube directory..."
+            if (Test-Path $sonarDir) {
+              Write-Host "Contents of .sonarqube:"
+              Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
             }
-          } finally {
-            Pop-Location
+            # Don't exit - we still want to check for report file
+          } else {
+            Write-Host "✅ SonarScanner end completed successfully"
           }
           
           Write-Host "✅ SonarCloud scan completed successfully"
           
-          # Verify report file was created
+          # Wait a moment for file system to catch up
+          Start-Sleep -Seconds 2
+          
+          # Verify report file was created (check immediately after SonarScanner end)
           $reportFile = "${{ github.workspace }}/.sonarqube/report-task.txt"
+          Write-Host "Looking for report file at: $reportFile"
+          Write-Host "Current directory: $(Get-Location)"
+          
+          # Check if .sonarqube directory exists
+          if (Test-Path $sonarDir) {
+            Write-Host "✅ .sonarqube directory exists"
+            Write-Host "Contents:"
+            Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+          } else {
+            Write-Host "❌ .sonarqube directory does not exist at: $sonarDir"
+          }
+          
           if (Test-Path $reportFile) {
             Write-Host "✅ Report file created: $reportFile"
             Write-Host "Report file contents:"
             Get-Content $reportFile
           } else {
             Write-Host "⚠️ Report file not found at expected location: $reportFile"
-            Write-Host "Searching for report-task.txt..."
+            Write-Host "Searching for report-task.txt in workspace..."
             $foundReports = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "report-task.txt" -ErrorAction SilentlyContinue
             if ($foundReports) {
               Write-Host "Found report files:"
@@ -229,9 +254,20 @@ jobs:
                 Write-Host "  $($report.FullName)"
                 Write-Host "  Contents:"
                 Get-Content $report.FullName
+                # Copy to expected location if found elsewhere
+                if ($report.FullName -ne $reportFile) {
+                  $reportDir = Split-Path -Parent $reportFile
+                  if (-not (Test-Path $reportDir)) {
+                    New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
+                  }
+                  Copy-Item -Path $report.FullName -Destination $reportFile -Force
+                  Write-Host "  ✅ Copied to expected location: $reportFile"
+                }
               }
             } else {
-              Write-Host "No report-task.txt files found anywhere"
+              Write-Host "❌ No report-task.txt files found anywhere"
+              Write-Host "This usually means the SonarCloud analysis failed or is still processing"
+              Write-Host "Check SonarCloud dashboard for analysis status"
             }
           }
       
