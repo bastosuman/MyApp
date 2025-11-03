@@ -81,5 +81,4 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           scanMetadataReportFile: .scannerwork/report-task.txt
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
 
