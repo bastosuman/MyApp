@@ -54,4 +54,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" || echo "SonarScanner end completed with warnings"
+          try {
+            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+          } catch {
+            Write-Host "SonarScanner end completed with warnings"
+          }
