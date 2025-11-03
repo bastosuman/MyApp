@@ -15,6 +15,9 @@ jobs:
   build:
     name: Build and analyze
     runs-on: windows-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     steps:
       - name: Set up .NET SDK
@@ -57,12 +60,9 @@ jobs:
         run: dotnet restore MyApp.sln
       
       - name: Build and analyze
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
           
           dotnet build MyApp.sln --configuration Release --no-incremental
           
@@ -71,7 +71,7 @@ jobs:
             dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}\TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
           }
           
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
       
       - name: Upload SonarQube Quality Gate status
         if: always()
@@ -81,4 +81,5 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           scanMetadataReportFile: .scannerwork/report-task.txt
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
 
