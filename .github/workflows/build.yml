@@ -29,180 +29,39 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       
-      - name: Cache SonarQube Cloud packages
-        uses: actions/cache@v4
-        with:
-          path: ~/sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      
-      - name: Cache SonarQube Cloud scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
-      
-      - name: Install SonarQube Cloud scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          New-Item -Path "${{ runner.temp }}/scanner" -ItemType Directory -Force
-          try {
-            dotnet tool update dotnet-sonarscanner --tool-path "${{ runner.temp }}/scanner"
-          } catch {
-            dotnet tool install dotnet-sonarscanner --tool-path "${{ runner.temp }}/scanner"
-          }
-          Write-Host "Scanner installed at: ${{ runner.temp }}/scanner"
-      
       - name: Restore dependencies
         shell: powershell
         working-directory: ${{ github.workspace }}
         run: dotnet restore MyApp.sln
       
-      - name: Build and analyze
+      - name: Build solution
         shell: powershell
         working-directory: ${{ github.workspace }}
         run: |
-          Write-Host "=== Starting SonarQube Analysis ==="
-          Write-Host "Current working directory: $(Get-Location)"
-          Write-Host "GitHub workspace: ${{ github.workspace }}"
-          
-          # Ensure we're in the workspace root
-          Set-Location -Path "${{ github.workspace }}"
-          Write-Host "Changed to directory: $(Get-Location)"
-          
-          # Verify SONAR_TOKEN is set (without revealing it)
-          if ([string]::IsNullOrEmpty($env:SONAR_TOKEN)) {
-            Write-Host "ERROR: SONAR_TOKEN environment variable is not set or is empty"
-            exit 1
-          }
-          Write-Host "SONAR_TOKEN is set (length: $($env:SONAR_TOKEN.Length) characters)"
-          
-          # Set scanner path with forward slashes
-          $scannerPath = "${{ runner.temp }}/scanner/dotnet-sonarscanner"
-          Write-Host "Scanner path: $scannerPath"
-          
-          # Verify scanner exists
-          if (-Not (Test-Path $scannerPath)) {
-            Write-Host "ERROR: Scanner not found at $scannerPath"
-            Write-Host "Checking scanner directory..."
-            if (Test-Path "${{ runner.temp }}/scanner") {
-              Get-ChildItem -Path "${{ runner.temp }}/scanner" | ForEach-Object { Write-Host "  - $($_.Name)" }
-            }
-            exit 1
-          }
-          
-          Write-Host "Scanner found, beginning analysis..."
-          
-          # Begin SonarQube analysis
-          & $scannerPath begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
-          
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: SonarQube begin failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-          }
-          
-          Write-Host "SonarQube begin completed successfully"
-          Write-Host "Current directory after begin: $(Get-Location)"
-          
-          # Build the solution
-          Write-Host "Building solution..."
           dotnet build MyApp.sln --configuration Release --no-incremental
-          
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: Build failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-          }
-          
-          Write-Host "Build completed successfully"
-          
-          # Run tests with coverage if test projects exist
-          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
-            Write-Host "Running tests with coverage..."
-            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
-          }
-          
-          # End SonarQube analysis
-          Write-Host "Ending SonarQube analysis..."
-          Write-Host "Current directory before end: $(Get-Location)"
-          & $scannerPath end /d:sonar.login="$env:SONAR_TOKEN"
-          
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: SonarQube end failed with exit code $LASTEXITCODE"
-            Write-Host "Current directory: $(Get-Location)"
-            Write-Host "Listing all directories:"
-            Get-ChildItem -Directory | ForEach-Object { Write-Host "  - $($_.FullName)" }
-            exit $LASTEXITCODE
-          }
-          
-          Write-Host "SonarQube end completed successfully"
-          Write-Host "Current directory after end: $(Get-Location)"
-          
-          # List directory contents
-          Write-Host "Directory contents:"
-          Get-ChildItem | ForEach-Object { Write-Host "  - $($_.Name) ($($_.PSIsContainer ? 'Directory' : 'File'))" }
-          
-          # Verify report file exists
-          Write-Host "Checking for .scannerwork/report-task.txt..."
-          if (-Not (Test-Path ".scannerwork/report-task.txt")) {
-            Write-Host "ERROR: SonarQube report file not found at .scannerwork/report-task.txt"
-            Write-Host "Current directory: $(Get-Location)"
-            if (Test-Path ".scannerwork") {
-              Write-Host ".scannerwork directory exists. Contents:"
-              Get-ChildItem -Path ".scannerwork" -Recurse | ForEach-Object { Write-Host "  - $($_.FullName)" }
-            } else {
-              Write-Host ".scannerwork directory does not exist"
-              Write-Host "Searching for .scannerwork in workspace..."
-              $found = Get-ChildItem -Path "${{ github.workspace }}" -Directory -Recurse -Filter ".scannerwork" -ErrorAction SilentlyContinue
-              if ($found) {
-                Write-Host "Found .scannerwork directories:"
-                $found | ForEach-Object { Write-Host "  - $($_.FullName)" }
-              } else {
-                Write-Host "No .scannerwork directories found"
-              }
-            }
-            exit 1
-          }
-          
-          Write-Host "SonarQube report file found: .scannerwork/report-task.txt"
-          Write-Host "Report file contents:"
-          Get-Content ".scannerwork/report-task.txt"
       
-      - name: Verify SonarQube report exists
-        if: always()
+      - name: Run tests with coverage
         shell: powershell
         working-directory: ${{ github.workspace }}
         run: |
-          # Ensure we're in the workspace root
-          Set-Location -Path "${{ github.workspace }}"
-          Write-Host "Current directory: $(Get-Location)"
-          
-          if (-Not (Test-Path ".scannerwork/report-task.txt")) {
-            Write-Host "ERROR: SonarQube report file .scannerwork/report-task.txt does not exist"
-            Write-Host "Working directory: $(Get-Location)"
-            Write-Host "Directory contents:"
-            Get-ChildItem | ForEach-Object { Write-Host $_.Name }
-            Write-Host "Checking for .scannerwork directory..."
-            if (Test-Path ".scannerwork") {
-              Write-Host "Contents of .scannerwork:"
-              Get-ChildItem -Path ".scannerwork" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            } else {
-              Write-Host ".scannerwork directory does not exist in $(Get-Location)"
-              Write-Host "Searching entire workspace for .scannerwork..."
-              $scannerDirs = Get-ChildItem -Path "${{ github.workspace }}" -Directory -Recurse -Filter ".scannerwork" -ErrorAction SilentlyContinue
-              if ($scannerDirs) {
-                Write-Host "Found .scannerwork directories:"
-                $scannerDirs | ForEach-Object { Write-Host $_.FullName }
-              } else {
-                Write-Host "No .scannerwork directories found anywhere"
-              }
-            }
-            exit 1
+          if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
+            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+          } else {
+            Write-Host "No test projects found, skipping tests"
           }
-          Write-Host "SonarQube report file verified: .scannerwork/report-task.txt"
-          Get-Content ".scannerwork/report-task.txt"
+      
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@master
+        with:
+          args: >
+            -Dsonar.projectKey=bastosuman_MyApp
+            -Dsonar.organization=bastosuman
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
+            -Dsonar.coverage.exclusions=**/Migrations/**,**/Program.cs
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Upload SonarQube Quality Gate status
         if: always()
