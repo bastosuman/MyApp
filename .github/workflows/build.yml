@@ -46,8 +46,11 @@ jobs:
           $coveragePath = "${{ github.workspace }}/coverage.opencover.xml"
           Write-Host "Starting SonarCloud scan with coverage path: $coveragePath"
           
-          # Coverage exclusions - exclude generated files, migrations, and entry point
-          $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs"
+          # Coverage exclusions - exclude generated files, migrations, entry point, and frontend
+          $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs,**/BankUI/**"
+          
+          # Source exclusions - exclude frontend files from SonarCloud analysis
+          $sourceExclusions = "**/BankUI/**,**/node_modules/**,**/dist/**,**/build/**"
           
           dotnet sonarscanner begin `
             /k:"bastosuman_MyApp" `
@@ -56,7 +59,8 @@ jobs:
             /d:sonar.host.url="https://sonarcloud.io" `
             /d:sonar.cs.opencover.reportsPaths="$coveragePath" `
             /d:sonar.coverage.exclusions="$coverageExclusions" `
-            /d:sonar.csharp.coverage.exclusions="$coverageExclusions"
+            /d:sonar.csharp.coverage.exclusions="$coverageExclusions" `
+            /d:sonar.exclusions="$sourceExclusions"
       
       - name: Build solution
         shell: powershell
