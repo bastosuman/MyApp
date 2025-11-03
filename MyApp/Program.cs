@@ -13,9 +13,16 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Register Entity Framework DbContext
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' not found. " +
+        "Please configure it in appsettings.json or via environment variables.");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") 
-        ?? "Server=SUMAN\\MSSQLSERVER01;Database=MyAppFinancial;Trusted_Connection=True;TrustServerCertificate=True;"));
+    options.UseSqlServer(connectionString));
 
 // Register VB.NET calculation service (demonstrates C#/VB.NET interoperability)
 // Temporarily commented to allow migrations - will uncomment after database setup
@@ -56,19 +63,39 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Seed database on startup (only if in development or explicitly enabled)
-using (var scope = app.Services.CreateScope())
+// Seed database on startup (only if in development or explicitly enabled via configuration)
+// In production, set "Database:EnableSeeding": true in appsettings.json to enable seeding
+var isDevelopment = app.Environment.IsDevelopment();
+var explicitSeedingEnabled = builder.Configuration.GetValue<bool>("Database:EnableSeeding", false);
+var shouldSeedDatabase = isDevelopment || explicitSeedingEnabled;
+
+if (shouldSeedDatabase)
 {
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        DbInitializer.Seed(context);
-    }
-    catch (Exception ex)
-    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<ApplicationDbContext>();
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
+        
+        try
+        {
+            logger.LogInformation("Database seeding is enabled. Starting seed process...");
+            DbInitializer.Seed(context);
+            logger.LogInformation("Database seeding completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while seeding the database.");
+        }
+    }
+}
+else if (app.Environment.IsProduction() || app.Environment.IsStaging())
+{
+    // Log that seeding is skipped in production/staging unless explicitly enabled
+    using (var scope = app.Services.CreateScope())
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Database seeding is disabled in {Environment}. Set 'Database:EnableSeeding' to true in configuration to enable seeding.", app.Environment.EnvironmentName);
     }
 }
 
