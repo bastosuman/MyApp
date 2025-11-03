@@ -41,9 +41,17 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          # Start SonarCloud scan - set coverage path pattern (file will exist after tests run)
+          
+          # Set coverage path - file will be created after tests run
           $coveragePath = "${{ github.workspace }}/coverage.opencover.xml"
-          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="$coveragePath"
+          Write-Host "Starting SonarCloud scan with coverage path: $coveragePath"
+          
+          dotnet sonarscanner begin `
+            /k:"bastosuman_MyApp" `
+            /o:"bastosuman" `
+            /d:sonar.login="$env:SONAR_TOKEN" `
+            /d:sonar.host.url="https://sonarcloud.io" `
+            /d:sonar.cs.opencover.reportsPaths="$coveragePath"
       
       - name: Build solution
         shell: powershell
@@ -56,71 +64,90 @@ jobs:
             Write-Host "Running tests with coverage collection..."
             dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
             
-            # Find coverage files in TestResults subdirectories (they're in GUID folders)
+            # Find and copy coverage files
             Write-Host "Searching for coverage files..."
             $coverageFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.opencover.xml"
             
             if ($coverageFiles.Count -eq 0) {
-              Write-Host "⚠️ No coverage files found! Listing all XML files:"
-              Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" | ForEach-Object { Write-Host "  $($_.FullName)" }
-            } else {
-              Write-Host "Found $($coverageFiles.Count) coverage file(s):"
-              foreach ($file in $coverageFiles) {
-                Write-Host "  Source: $($file.FullName)"
-                
-                # Copy to workspace root (SonarCloud will look here)
-                $destPath = "${{ github.workspace }}/coverage.opencover.xml"
-                Copy-Item -Path $file.FullName -Destination $destPath -Force
-                Write-Host "  Copied to: $destPath"
-                
-                # Verify the copy
-                if (Test-Path $destPath) {
-                  $destFile = Get-Item $destPath
-                  Write-Host "  ✅ File copied successfully ($($destFile.Length) bytes)"
-                }
+              Write-Host "⚠️ No coverage files found!"
+              Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "*.xml" | ForEach-Object { Write-Host "  Found: $($_.FullName)" }
+              exit 1
+            }
+            
+            Write-Host "Found $($coverageFiles.Count) coverage file(s)"
+            foreach ($file in $coverageFiles) {
+              Write-Host "  Source: $($file.FullName)"
+              
+              # Copy to workspace root
+              $destPath = "${{ github.workspace }}/coverage.opencover.xml"
+              Copy-Item -Path $file.FullName -Destination $destPath -Force
+              
+              if (Test-Path $destPath) {
+                $destFile = Get-Item $destPath
+                Write-Host "  ✅ Copied to: $destPath ($($destFile.Length) bytes)"
+              } else {
+                Write-Host "  ❌ Failed to copy coverage file"
+                exit 1
               }
             }
           } else {
             Write-Host "No test projects found, skipping tests"
           }
       
-      - name: Verify coverage file before SonarCloud end
-        if: always()
-        shell: powershell
-        run: |
-          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
-          if (Test-Path $coverageFile) {
-            Write-Host "✅ Coverage file ready for SonarCloud: $coverageFile"
-            $fileInfo = Get-Item $coverageFile
-            Write-Host "   Size: $($fileInfo.Length) bytes"
-          } else {
-            Write-Host "⚠️ Coverage file not found. SonarCloud will run without coverage data."
-            Write-Host "   Searching workspace for coverage files:"
-            Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage*.xml" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "     $($_.FullName)" }
-          }
-      
       - name: End SonarCloud Scan
         if: always()
-        continue-on-error: true
         shell: powershell
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
-          # Verify coverage file exists before ending
+          # Verify coverage file exists
           $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
           if (Test-Path $coverageFile) {
-            Write-Host "✅ Coverage file exists, ending scan with coverage data"
+            Write-Host "✅ Coverage file found: $coverageFile"
+            $fileInfo = Get-Item $coverageFile
+            Write-Host "   Size: $($fileInfo.Length) bytes"
           } else {
-            Write-Host "⚠️ Coverage file not found, ending scan without coverage"
+            Write-Host "⚠️ Coverage file not found, continuing without coverage"
           }
           
-          # End scan (coverage path was set during begin phase)
+          # End SonarCloud scan
+          Write-Host "Ending SonarCloud scan..."
           dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ SonarScanner end failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          
+          Write-Host "✅ SonarCloud scan completed successfully"
+      
+      - name: Verify report file exists
+        if: always()
+        shell: powershell
+        id: verify-report
+        run: |
+          $reportFile = ".sonarqube/report-task.txt"
+          if (Test-Path $reportFile) {
+            Write-Host "✅ Report file found: $reportFile"
+            Write-Host "File contents:"
+            Get-Content $reportFile
+            Write-Host "reportExists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "❌ Report file not found: $reportFile"
+            Write-Host "Checking for .sonarqube directory..."
+            if (Test-Path ".sonarqube") {
+              Write-Host "Contents of .sonarqube:"
+              Get-ChildItem -Path ".sonarqube" -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            } else {
+              Write-Host ".sonarqube directory does not exist"
+            }
+            Write-Host "reportExists=false" >> $env:GITHUB_OUTPUT
+          }
       
       - name: Upload SonarQube Quality Gate status
-        if: always()
+        if: always() && steps.verify-report.outputs.reportExists == 'true'
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
