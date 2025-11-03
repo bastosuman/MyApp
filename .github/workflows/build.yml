@@ -95,19 +95,20 @@ jobs:
           Write-Host "Running tests with coverage collection..."
           
           # Run tests with coverage collection using coverlet.msbuild
-          # Use DataCollectionRunSettings to ensure proper coverage collection
+          # Note: We use MSBuild properties (not runsettings) since we're using coverlet.msbuild package
           dotnet test MyApp.sln `
             --configuration Release `
             /p:CollectCoverage=true `
             /p:CoverletOutputFormat=opencover `
             /p:CoverletOutput="${{ github.workspace }}/coverage.opencover.xml" `
             /p:CoverletOutputDirectory="${{ github.workspace }}" `
+            /p:CoverletMergeAttributes=ExcludeFromCoverage `
             /p:Exclude="[*.Tests]*,[*.Migrations]*,[*]*Program" `
             /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" `
+            /p:Include="[MyApp]*,[MyApp.Core]*,[MyApp.Data]*" `
             --logger:"trx;LogFileName=test-results.trx" `
             --results-directory:"${{ runner.temp }}/TestResults" `
-            --verbosity normal `
-            --settings:"MyApp.Tests/coverlet.runsettings"
+            --verbosity normal
           
           if ($LASTEXITCODE -ne 0) {
             Write-Host "⚠️ Tests failed with exit code $LASTEXITCODE"
@@ -189,19 +190,25 @@ jobs:
           Write-Host "Current directory: $(Get-Location)"
           Write-Host "Workspace: ${{ github.workspace }}"
           
-          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
-          
-          $exitCode = $LASTEXITCODE
-          Write-Host "SonarScanner end command exited with code: $exitCode"
-          
-          if ($exitCode -ne 0) {
-            Write-Host "❌ SonarScanner end failed with exit code $exitCode"
-            Write-Host "Checking for .sonarqube directory..."
-            if (Test-Path $sonarDir) {
-              Write-Host "Contents of .sonarqube:"
-              Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+          # Change to workspace directory before ending scan (SonarScanner needs to be in project root)
+          Push-Location "${{ github.workspace }}"
+          try {
+            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "SonarScanner end command exited with code: $exitCode"
+            
+            if ($exitCode -ne 0) {
+              Write-Host "❌ SonarScanner end failed with exit code $exitCode"
+              Write-Host "Checking for .sonarqube directory..."
+              if (Test-Path $sonarDir) {
+                Write-Host "Contents of .sonarqube:"
+                Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+              }
+              exit $exitCode
             }
-            exit $exitCode
+          } finally {
+            Pop-Location
           }
           
           Write-Host "✅ SonarCloud scan completed successfully"
