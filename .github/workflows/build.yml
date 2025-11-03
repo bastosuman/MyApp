@@ -40,7 +40,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io"
+          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.coverage.exclusions="**/*" /d:sonar.newCode.coverage.exclusions="**/*" /d:sonar.csharp.coverage.exclusions="**/*"
       
       - name: Build solution
         shell: powershell
