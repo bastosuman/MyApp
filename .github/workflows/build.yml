@@ -41,8 +41,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          # Start SonarCloud scan - coverage path will be set after tests run
-          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io"
+          # Start SonarCloud scan - set coverage path pattern (file will exist after tests run)
+          $coveragePath = "${{ github.workspace }}/coverage.opencover.xml"
+          dotnet sonarscanner begin /k:"bastosuman_MyApp" /o:"bastosuman" /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="$coveragePath"
       
       - name: Build solution
         shell: powershell
@@ -107,15 +108,16 @@ jobs:
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
-          # Set coverage path for SonarCloud
+          # Verify coverage file exists before ending
           $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
           if (Test-Path $coverageFile) {
-            Write-Host "Coverage file found, including in SonarCloud analysis"
-            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /d:sonar.cs.opencover.reportsPaths="$coverageFile"
+            Write-Host "✅ Coverage file exists, ending scan with coverage data"
           } else {
-            Write-Host "Coverage file not found, ending scan without coverage"
-            dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+            Write-Host "⚠️ Coverage file not found, ending scan without coverage"
           }
+          
+          # End scan (coverage path was set during begin phase)
+          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
       
       - name: Upload SonarQube Quality Gate status
         if: always()
