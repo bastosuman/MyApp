@@ -54,6 +54,126 @@ public class AccountEntityTests
         Assert.NotNull(account.Applications);
         Assert.Empty(account.Applications);
     }
+
+    [Fact]
+    public void Account_AccountNumberDefaultsToEmptyString()
+    {
+        // Arrange
+        var account = new Account();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, account.AccountNumber);
+    }
+
+    [Fact]
+    public void Account_FirstNameDefaultsToEmptyString()
+    {
+        // Arrange
+        var account = new Account();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, account.FirstName);
+    }
+
+    [Fact]
+    public void Account_LastNameDefaultsToEmptyString()
+    {
+        // Arrange
+        var account = new Account();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, account.LastName);
+    }
+
+    [Fact]
+    public void Account_EmailDefaultsToEmptyString()
+    {
+        // Arrange
+        var account = new Account();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, account.Email);
+    }
+
+    [Fact]
+    public void Account_PhoneDefaultsToEmptyString()
+    {
+        // Arrange
+        var account = new Account();
+
+        // Act & Assert
+        Assert.Equal(string.Empty, account.Phone);
+    }
+
+    [Fact]
+    public void Account_CanSetAccountNumber()
+    {
+        // Arrange
+        var account = new Account();
+        var accountNumber = "ACC123";
+
+        // Act
+        account.AccountNumber = accountNumber;
+
+        // Assert
+        Assert.Equal(accountNumber, account.AccountNumber);
+    }
+
+    [Fact]
+    public void Account_CanSetFirstName()
+    {
+        // Arrange
+        var account = new Account();
+        var firstName = "John";
+
+        // Act
+        account.FirstName = firstName;
+
+        // Assert
+        Assert.Equal(firstName, account.FirstName);
+    }
+
+    [Fact]
+    public void Account_CanSetLastName()
+    {
+        // Arrange
+        var account = new Account();
+        var lastName = "Doe";
+
+        // Act
+        account.LastName = lastName;
+
+        // Assert
+        Assert.Equal(lastName, account.LastName);
+    }
+
+    [Fact]
+    public void Account_CanSetEmail()
+    {
+        // Arrange
+        var account = new Account();
+        var email = "john.doe@example.com";
+
+        // Act
+        account.Email = email;
+
+        // Assert
+        Assert.Equal(email, account.Email);
+    }
+
+    [Fact]
+    public void Account_CanSetPhone()
+    {
+        // Arrange
+        var account = new Account();
+        var phone = "+1-555-1234";
+
+        // Act
+        account.Phone = phone;
+
+        // Assert
+        Assert.Equal(phone, account.Phone);
+    }
 }
 
 public class ProductEntityTests
