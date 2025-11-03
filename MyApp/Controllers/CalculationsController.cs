@@ -33,7 +33,7 @@ public class CalculationsController : ControllerBase
         }
 
         var interest = _calculationService.CalculateInterest(request.Principal, request.Rate, request.TermMonths);
-        return Ok(new InterestResponse { Interest = interest });
+        return Ok(new InterestResponse(interest));
     }
 
     /// <summary>
@@ -57,12 +57,7 @@ public class CalculationsController : ControllerBase
         var totalPayment = _calculationService.CalculateTotalPayment(monthlyPayment, request.TermMonths);
         var totalInterest = totalPayment - request.Principal;
 
-        return Ok(new MonthlyPaymentResponse
-        {
-            MonthlyPayment = monthlyPayment,
-            TotalPayment = totalPayment,
-            TotalInterest = totalInterest
-        });
+        return Ok(new MonthlyPaymentResponse(monthlyPayment, totalPayment, totalInterest));
     }
 
     /// <summary>
@@ -84,7 +79,7 @@ public class CalculationsController : ControllerBase
             request.CreditHistoryMonths,
             request.HasBankruptcy);
 
-        return Ok(new CreditScoreResponse { CreditScore = creditScore });
+        return Ok(new CreditScoreResponse(creditScore));
     }
 }
 

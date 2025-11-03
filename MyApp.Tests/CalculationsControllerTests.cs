@@ -33,8 +33,8 @@ public class CalculationsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<dynamic>(okResult.Value);
-        Assert.Equal(expectedInterest, (decimal)response.Interest);
+        var response = Assert.IsType<InterestResponse>(okResult.Value);
+        Assert.Equal(expectedInterest, response.Interest);
         _mockCalculationService.Verify(x => x.CalculateInterest(10000m, 5.5m, 12), Times.Once);
     }
 
@@ -166,10 +166,10 @@ public class CalculationsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<dynamic>(okResult.Value);
-        Assert.Equal(expectedMonthlyPayment, (decimal)response.MonthlyPayment);
-        Assert.Equal(expectedTotalPayment, (decimal)response.TotalPayment);
-        Assert.Equal(expectedTotalInterest, (decimal)response.TotalInterest);
+        var response = Assert.IsType<MonthlyPaymentResponse>(okResult.Value);
+        Assert.Equal(expectedMonthlyPayment, response.MonthlyPayment);
+        Assert.Equal(expectedTotalPayment, response.TotalPayment);
+        Assert.Equal(expectedTotalInterest, response.TotalInterest);
         _mockCalculationService.Verify(x => x.CalculateMonthlyPayment(100000m, 5.5m, 360), Times.Once);
         _mockCalculationService.Verify(x => x.CalculateTotalPayment(expectedMonthlyPayment, 360), Times.Once);
     }
@@ -294,8 +294,8 @@ public class CalculationsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<dynamic>(okResult.Value);
-        Assert.Equal(expectedScore, (int)response.CreditScore);
+        var response = Assert.IsType<CreditScoreResponse>(okResult.Value);
+        Assert.Equal(expectedScore, response.CreditScore);
         _mockCalculationService.Verify(x => x.CalculateCreditScore(5000m, 1500m, 60, false), Times.Once);
     }
 
