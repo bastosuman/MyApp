@@ -13,15 +13,11 @@ public static class DbInitializer
     /// </summary>
     public static void Seed(ApplicationDbContext context)
     {
-        // Check if data already exists (skip seeding if already populated)
-        if (context.Products.Any() || context.Accounts.Any())
+        // Seed Products (only if they don't exist)
+        if (!context.Products.Any())
         {
-            return; // Database already seeded
-        }
-
-        // Seed Products
-        var products = new List<Product>
-        {
+            var products = new List<Product>
+            {
             new Product
             {
                 Name = "Personal Loan",
@@ -72,11 +68,14 @@ public static class DbInitializer
             }
         };
 
-        context.Products.AddRange(products);
+            context.Products.AddRange(products);
+        }
 
-        // Seed Accounts
-        var accounts = new List<Account>
+        // Seed Accounts (only if they don't exist)
+        if (!context.Accounts.Any())
         {
+            var accounts = new List<Account>
+            {
             new Account
             {
                 AccountNumber = "ACC001",
@@ -109,9 +108,10 @@ public static class DbInitializer
             }
         };
 
-        context.Accounts.AddRange(accounts);
+            context.Accounts.AddRange(accounts);
+        }
 
-        // Save all changes
+        // Save all changes (only if there are any pending changes)
         context.SaveChanges();
     }
 }
