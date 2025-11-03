@@ -1,0 +1,161 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.App {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.App-header {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 900px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  color: #000000;
+}
+
+.App-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 2.5em;
+}
+
+.App-header p {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 1.1em;
+}
+
+.api-section {
+  margin-top: 30px;
+}
+
+.api-section button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.api-section button:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.api-section button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+  color: #c33;
+}
+
+.error-hint {
+  font-size: 0.9em;
+  margin-top: 10px;
+  color: #a33;
+}
+
+.weather-data {
+  margin-top: 30px;
+  color: #000000;
+}
+
+.weather-data * {
+  color: #000000;
+}
+
+.weather-data h2 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.5em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+thead {
+  background: #667eea;
+  color: white;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+td {
+  color: #000000 !important;
+}
+
+th {
+  font-weight: 600;
+  color: #ffffff !important;
+}
+
+thead th {
+  color: #ffffff !important;
+}
+
+tbody tr:hover {
+  background: #f5f5f5;
+}
+
+tbody tr:hover td {
+  color: #000000;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr {
+  display: table-row;
+}
+
+tbody td {
+  display: table-cell;
+  color: #000000 !important;
+  background-color: #ffffff;
+}
+
+code {
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #667eea;
+}
+

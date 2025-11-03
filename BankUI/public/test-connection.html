@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test MyApp Backend Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        #result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        #result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.checking {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test MyApp Backend Connection</h1>
+        <p>This page tests the connection to the MyApp backend API.</p>
+        
+        <div id="status" class="status checking">Checking backend connection...</div>
+        
+        <button onclick="testConnection()">Test API Connection</button>
+        <button onclick="fetchWeatherData()">Fetch Weather Forecast</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5250/WeatherForecast';
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+
+        // Test connection on page load
+        window.onload = function() {
+            testConnection();
+        };
+
+        async function testConnection() {
+            statusDiv.className = 'status checking';
+            statusDiv.textContent = 'Checking backend connection...';
+            resultDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    statusDiv.className = 'status connected';
+                    statusDiv.textContent = '✓ Backend is connected and responding!';
+                    
+                    const data = await response.json();
+                    showResult('success', 'Connection successful!', data);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '✗ Connection failed!';
+                showResult('error', 'Connection Error', error.message);
+            }
+        }
+
+        async function fetchWeatherData() {
+            resultDiv.style.display = 'none';
+            statusDiv.className = 'status checking';
+            statusDiv.textContent = 'Fetching weather data...';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = `✓ Successfully fetched ${data.length} records!`;
+                
+                let html = '<h3>Weather Forecast Data:</h3>';
+                html += '<table>';
+                html += '<thead><tr><th>Date</th><th>Temp (°C)</th><th>Temp (°F)</th><th>Summary</th></tr></thead>';
+                html += '<tbody>';
+                
+                data.forEach(item => {
+                    html += `<tr>
+                        <td>${item.date}</td>
+                        <td>${item.temperatureC}</td>
+                        <td>${item.temperatureF}</td>
+                        <td>${item.summary || 'N/A'}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+                html += '<h4>Raw JSON Response:</h4>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                showResult('success', 'Weather Data Fetched', html, true);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '✗ Failed to fetch data!';
+                showResult('error', 'Fetch Error', error.message);
+            }
+        }
+
+        function showResult(type, title, content, isHtml = false) {
+            resultDiv.className = type;
+            resultDiv.style.display = 'block';
+            
+            if (isHtml) {
+                resultDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            } else {
+                resultDiv.innerHTML = `<h3>${title}</h3><pre>${typeof content === 'object' ? JSON.stringify(content, null, 2) : content}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
