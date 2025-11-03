@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using MyApp.Core.Interfaces;
 using MyApp.Data;
+using MyApp.Services.VB;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +23,9 @@ if (string.IsNullOrEmpty(connectionString))
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+// Register calculation service (VB.NET implementation)
+builder.Services.AddScoped<ICalculationService, CalculationService>();
 
 
 // Add CORS to allow BankUI frontend to connect
