@@ -39,17 +39,33 @@ jobs:
       
       - name: Begin SonarCloud Scan
         shell: powershell
+        working-directory: ${{ github.workspace }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
+          # CRITICAL: Ensure we're in the workspace root directory
+          Set-Location "${{ github.workspace }}"
+          Write-Host "=== SonarScanner Begin Step ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Workspace: ${{ github.workspace }}"
+          Write-Host ""
+          
+          # Verify we're in the right place
+          if (-not (Test-Path "MyApp.sln")) {
+            Write-Host "❌ ERROR: MyApp.sln not found in current directory!"
+            Write-Host "Current directory contents:"
+            Get-ChildItem | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
+            exit 1
+          }
+          Write-Host "✅ MyApp.sln found - we're in the correct directory"
+          Write-Host ""
+          
           # Set coverage path - use relative path (SonarCloud prefers relative paths)
           $coveragePath = "coverage.opencover.xml"
-          Write-Host "Starting SonarCloud scan..."
           Write-Host "Coverage path (relative): $coveragePath"
-          Write-Host "Coverage path (absolute): ${{ github.workspace }}/$coveragePath"
-          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Coverage path (absolute): ${{ github.workspace }}\$coveragePath"
           
           # Coverage exclusions - exclude generated files, migrations, entry point, and frontend
           $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs,**/BankUI/**"
@@ -60,8 +76,11 @@ jobs:
           # Set new code baseline for coverage calculation
           $newCodeBaseline = if ($env:GITHUB_BASE_REF) { $env:GITHUB_BASE_REF } else { "main" }
           Write-Host "Using new code baseline: $newCodeBaseline"
+          Write-Host ""
           
           Write-Host "Running SonarScanner begin command..."
+          Write-Host "This will create .sonarqube directory in: $(Get-Location)"
+          
           # Capture output to see any errors
           $beginOutput = dotnet sonarscanner begin `
             /k:"bastosuman_MyApp" `
@@ -97,30 +116,51 @@ jobs:
             Write-Host "Analysis session initialized"
             
             # Verify the analysis config file was created
-            $configFile = "${{ github.workspace }}\.sonarqube\conf\SonarQubeAnalysisConfig.xml"
+            # Check both in current directory and workspace (SonarScanner creates it relative to current dir)
+            $currentDir = Get-Location
+            $configFileWorkspace = "${{ github.workspace }}\.sonarqube\conf\SonarQubeAnalysisConfig.xml"
+            $configFileCurrent = "$currentDir\.sonarqube\conf\SonarQubeAnalysisConfig.xml"
+            
             Write-Host ""
             Write-Host "Verifying analysis configuration was created..."
-            Write-Host "Expected config file: $configFile"
+            Write-Host "Current directory: $currentDir"
+            Write-Host "Workspace: ${{ github.workspace }}"
+            Write-Host "Checking workspace path: $configFileWorkspace"
+            Write-Host "Checking current dir path: $configFileCurrent"
             
-            if (Test-Path $configFile) {
-              Write-Host "✅ Analysis config file exists"
+            $configFile = $null
+            if (Test-Path $configFileWorkspace) {
+              $configFile = $configFileWorkspace
+            } elseif (Test-Path $configFileCurrent) {
+              $configFile = $configFileCurrent
+            }
+            
+            if ($configFile) {
+              Write-Host "✅ Analysis config file exists at: $configFile"
               $configInfo = Get-Item $configFile
               Write-Host "   Size: $($configInfo.Length) bytes"
               Write-Host "   Created: $($configInfo.CreationTime)"
             } else {
-              Write-Host "❌ Analysis config file NOT found!"
+              Write-Host "❌ Analysis config file NOT found in either location!"
               Write-Host "This will cause sonarscanner end to fail"
               Write-Host ""
               Write-Host "Checking .sonarqube directory structure..."
-              $sonarDir = "${{ github.workspace }}\.sonarqube"
-              if (Test-Path $sonarDir) {
-                Write-Host "✅ .sonarqube directory exists"
-                Get-ChildItem -Path $sonarDir -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
-                  Write-Host "  $($_.FullName.Replace('${{ github.workspace }}', '.'))"
+              $sonarDirWorkspace = "${{ github.workspace }}\.sonarqube"
+              $sonarDirCurrent = "$currentDir\.sonarqube"
+              
+              if (Test-Path $sonarDirWorkspace) {
+                Write-Host "✅ .sonarqube directory exists in workspace"
+                Get-ChildItem -Path $sonarDirWorkspace -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+                  Write-Host "  $($_.FullName)"
+                }
+              } elseif (Test-Path $sonarDirCurrent) {
+                Write-Host "✅ .sonarqube directory exists in current directory"
+                Get-ChildItem -Path $sonarDirCurrent -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+                  Write-Host "  $($_.FullName)"
                 }
               } else {
-                Write-Host "❌ .sonarqube directory does not exist"
-                Write-Host "Current directory: $(Get-Location)"
+                Write-Host "❌ .sonarqube directory does not exist in either location"
+                Write-Host "Current directory: $currentDir"
                 Write-Host "Workspace: ${{ github.workspace }}"
               }
               exit 1
@@ -277,15 +317,34 @@ jobs:
       - name: End SonarCloud Scan
         if: always()
         shell: powershell
+        working-directory: ${{ github.workspace }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
+          # CRITICAL: Ensure we're in the workspace root directory (same as begin step)
+          Set-Location "${{ github.workspace }}"
+          Write-Host "=== SonarScanner End Step ==="
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Workspace: ${{ github.workspace }}"
+          Write-Host ""
+          
+          # Verify we're in the right place
+          if (-not (Test-Path "MyApp.sln")) {
+            Write-Host "❌ ERROR: MyApp.sln not found in current directory!"
+            Write-Host "Current directory contents:"
+            Get-ChildItem | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
+            exit 1
+          }
+          Write-Host "✅ MyApp.sln found - we're in the correct directory"
+          Write-Host ""
+          
           # Verify coverage file exists
-          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
+          $coverageFile = "${{ github.workspace }}\coverage.opencover.xml"
+          Write-Host "Checking for coverage file: $coverageFile"
           if (Test-Path $coverageFile) {
-            Write-Host "✅ Coverage file found: $coverageFile"
+            Write-Host "✅ Coverage file found"
             $fileInfo = Get-Item $coverageFile
             Write-Host "   Size: $($fileInfo.Length) bytes"
             
@@ -299,31 +358,10 @@ jobs:
           } else {
             Write-Host "⚠️ Coverage file not found, continuing without coverage"
           }
-          
-          # Ensure .sonarqube directory exists
-          $sonarDir = "${{ github.workspace }}/.sonarqube"
-          if (-not (Test-Path $sonarDir)) {
-            New-Item -ItemType Directory -Path $sonarDir -Force | Out-Null
-            Write-Host "Created .sonarqube directory"
-          }
-          
-          # End SonarCloud scan
-          Write-Host "Ending SonarCloud scan..."
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Workspace: ${{ github.workspace }}"
-          
-          # Change to workspace directory before ending scan (SonarScanner needs to be in project root)
-          Set-Location "${{ github.workspace }}"
-          Write-Host "Current directory after Set-Location: $(Get-Location)"
-          
-          # Verify we're in the right place
-          if (-not (Test-Path "MyApp.sln")) {
-            Write-Host "⚠️ Warning: MyApp.sln not found in current directory"
-            Write-Host "Current directory contents:"
-            Get-ChildItem | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
-          }
+          Write-Host ""
           
           # Verify analysis config file exists (required for sonarscanner end)
+          # Check in workspace directory (where begin should have created it)
           $configFile = "${{ github.workspace }}\.sonarqube\conf\SonarQubeAnalysisConfig.xml"
           Write-Host ""
           Write-Host "=== Verifying SonarScanner session ==="
@@ -355,30 +393,7 @@ jobs:
             Write-Host "   Size: $($configInfo.Length) bytes"
           }
           
-          # Verify coverage file exists before ending scan
-          $coverageFile = "${{ github.workspace }}\coverage.opencover.xml"
-          Write-Host ""
-          Write-Host "Checking for coverage file: $coverageFile"
-          if (-not (Test-Path $coverageFile)) {
-            Write-Host "⚠️ Warning: Coverage file not found"
-            Write-Host "SonarCloud will proceed without coverage data"
-            Write-Host ""
-            Write-Host "Searching for coverage files in workspace..."
-            $coverageFiles = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage.opencover.xml" -ErrorAction SilentlyContinue
-            if ($coverageFiles) {
-              Write-Host "Found coverage files:"
-              foreach ($file in $coverageFiles) {
-                Write-Host "  $($file.FullName)"
-              }
-              Write-Host "Copying first found file to workspace root..."
-              Copy-Item -Path $coverageFiles[0].FullName -Destination $coverageFile -Force
-              Write-Host "✅ Copied coverage file to: $coverageFile"
-            }
-          } else {
-            Write-Host "✅ Coverage file found: $coverageFile"
-            $fileInfo = Get-Item $coverageFile
-            Write-Host "   Size: $($fileInfo.Length) bytes"
-          }
+          # Coverage file already checked above, continue...
           
           # End SonarScanner - this uploads results and generates report-task.txt
           Write-Host "Running SonarScanner end command..."
@@ -429,7 +444,7 @@ jobs:
           
           # The report file is created in .sonarqube/out/[sessionId]/report-task.txt
           # Find it by searching the out directory
-          $reportFile = "${{ github.workspace }}/.sonarqube/report-task.txt"
+          $reportFile = "${{ github.workspace }}\.sonarqube\report-task.txt"
           $reportFound = $false
           $reportPath = $null
           
@@ -438,7 +453,7 @@ jobs:
           Write-Host "Expected location: $reportFile"
           
           # First check if .sonarqube directory exists
-          $sonarDir = "${{ github.workspace }}/.sonarqube"
+          $sonarDir = "${{ github.workspace }}\.sonarqube"
           if (-not (Test-Path $sonarDir)) {
             Write-Host "⚠️ .sonarqube directory does not exist"
             Write-Host "This suggests SonarScanner begin may not have initialized properly"
@@ -449,7 +464,7 @@ jobs:
           }
           
           # Check .sonarqube/out subdirectories for report-task.txt
-          $outDir = "${{ github.workspace }}/.sonarqube/out"
+          $outDir = "${{ github.workspace }}\.sonarqube\out"
           if (Test-Path $outDir) {
             Write-Host ""
             Write-Host "Checking .sonarqube/out subdirectories..."
@@ -484,7 +499,7 @@ jobs:
           
           # Also check the root .sonarqube directory
           if (-not $reportFound) {
-            $rootReport = "${{ github.workspace }}/.sonarqube/report-task.txt"
+            $rootReport = "${{ github.workspace }}\.sonarqube\report-task.txt"
             if (Test-Path $rootReport) {
               Write-Host "✅ Found report file at root: $rootReport"
               Write-Host "Report file contents:"
@@ -496,7 +511,7 @@ jobs:
           # Final search - check all .txt files in .sonarqube
           if (-not $reportFound) {
             Write-Host "Searching all .txt files in .sonarqube directory..."
-            $allTxtFiles = Get-ChildItem -Path "${{ github.workspace }}/.sonarqube" -Recurse -Filter "*.txt" -ErrorAction SilentlyContinue
+            $allTxtFiles = Get-ChildItem -Path "${{ github.workspace }}\.sonarqube" -Recurse -Filter "*.txt" -ErrorAction SilentlyContinue
             foreach ($txt in $allTxtFiles) {
               Write-Host "Found: $($txt.FullName)"
               if ($txt.Name -eq "report-task.txt") {
@@ -529,8 +544,8 @@ jobs:
         id: verify-report
         run: |
           # Check both relative and absolute paths
-          $reportFileRelative = ".sonarqube/report-task.txt"
-          $reportFileAbsolute = "${{ github.workspace }}/.sonarqube/report-task.txt"
+          $reportFileRelative = ".sonarqube\report-task.txt"
+          $reportFileAbsolute = "${{ github.workspace }}\.sonarqube\report-task.txt"
           
           Write-Host "Checking for report file..."
           Write-Host "  Relative path: $reportFileRelative"
@@ -566,7 +581,7 @@ jobs:
             
             # Check .sonarqube directory contents
             Write-Host "Checking .sonarqube directory contents..."
-            $sonarDir = "${{ github.workspace }}/.sonarqube"
+            $sonarDir = "${{ github.workspace }}\.sonarqube"
             if (Test-Path $sonarDir) {
               Write-Host "Contents of .sonarqube:"
               Get-ChildItem -Path $sonarDir -Recurse | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.FullName)" }
