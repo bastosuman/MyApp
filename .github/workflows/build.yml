@@ -122,6 +122,9 @@ jobs:
           # Run tests with coverage collection using coverlet.msbuild
           # Note: We use MSBuild properties (not runsettings) since we're using coverlet.msbuild package
           # Avoid brackets in patterns - use file path exclusions instead
+          # Store attribute list in variable to avoid MSBuild comma parsing issues
+          $excludeAttributes = "Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute"
+          
           dotnet test MyApp.sln `
             --configuration Release `
             /p:CollectCoverage=true `
@@ -132,7 +135,7 @@ jobs:
             /p:ExcludeByFile="**/Migrations/**" `
             /p:ExcludeByFile="**/*Tests.csproj" `
             /p:ExcludeByFile="**/Program.cs" `
-            /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" `
+            /p:ExcludeByAttribute="$excludeAttributes" `
             --logger:"trx;LogFileName=test-results.trx" `
             --results-directory:"${{ runner.temp }}/TestResults" `
             --verbosity normal
