@@ -219,10 +219,10 @@ public class CalculationServiceTests
                             {
                                 types = loadedAssembly.GetTypes();
                             }
-                                    catch (ReflectionTypeLoadException ex)
-                                    {
-                                        types = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
-                                    }
+                            catch (ReflectionTypeLoadException ex)
+                            {
+                                types = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
+                            }
                             
                             if (types != null)
                             {
