@@ -201,24 +201,46 @@ jobs:
             Get-ChildItem | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
           }
           
+          # Verify coverage file exists before ending scan
+          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
+          if (-not (Test-Path $coverageFile)) {
+            Write-Host "⚠️ Warning: Coverage file not found at $coverageFile"
+            Write-Host "SonarCloud will proceed without coverage data"
+          } else {
+            Write-Host "✅ Coverage file found: $coverageFile"
+            $fileInfo = Get-Item $coverageFile
+            Write-Host "   Size: $($fileInfo.Length) bytes"
+          }
+          
           # End SonarScanner with verbose output
           Write-Host "Running SonarScanner end command..."
-          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /v:diag
+          Write-Host "This will upload analysis results to SonarCloud..."
           
+          # Capture output to see any errors
+          $scannerOutput = dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /v:diag 2>&1
           $exitCode = $LASTEXITCODE
+          
+          Write-Host "SonarScanner output:"
+          Write-Host $scannerOutput
           Write-Host "SonarScanner end command exited with code: $exitCode"
           
           if ($exitCode -ne 0) {
             Write-Host "❌ SonarScanner end failed with exit code $exitCode"
-            Write-Host "This may indicate analysis errors on SonarCloud"
+            Write-Host "This indicates the analysis upload to SonarCloud failed"
+            Write-Host "Common causes:"
+            Write-Host "  - Invalid SONAR_TOKEN"
+            Write-Host "  - Network issues"
+            Write-Host "  - SonarCloud project configuration errors"
+            Write-Host "  - Analysis data corruption"
             Write-Host "Checking for .sonarqube directory..."
             if (Test-Path $sonarDir) {
               Write-Host "Contents of .sonarqube:"
               Get-ChildItem -Path $sonarDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
             }
-            # Don't exit - we still want to check for report file
+            # Don't exit - we still want to check for report file (it might be generated despite exit code)
           } else {
             Write-Host "✅ SonarScanner end completed successfully"
+            Write-Host "Analysis results should have been uploaded to SonarCloud"
           }
           
           Write-Host "✅ SonarCloud scan completed successfully"
