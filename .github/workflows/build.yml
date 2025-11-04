@@ -95,6 +95,36 @@ jobs:
           } else {
             Write-Host "✅ SonarScanner begin completed successfully"
             Write-Host "Analysis session initialized"
+            
+            # Verify the analysis config file was created
+            $configFile = "${{ github.workspace }}\.sonarqube\conf\SonarQubeAnalysisConfig.xml"
+            Write-Host ""
+            Write-Host "Verifying analysis configuration was created..."
+            Write-Host "Expected config file: $configFile"
+            
+            if (Test-Path $configFile) {
+              Write-Host "✅ Analysis config file exists"
+              $configInfo = Get-Item $configFile
+              Write-Host "   Size: $($configInfo.Length) bytes"
+              Write-Host "   Created: $($configInfo.CreationTime)"
+            } else {
+              Write-Host "❌ Analysis config file NOT found!"
+              Write-Host "This will cause sonarscanner end to fail"
+              Write-Host ""
+              Write-Host "Checking .sonarqube directory structure..."
+              $sonarDir = "${{ github.workspace }}\.sonarqube"
+              if (Test-Path $sonarDir) {
+                Write-Host "✅ .sonarqube directory exists"
+                Get-ChildItem -Path $sonarDir -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+                  Write-Host "  $($_.FullName.Replace('${{ github.workspace }}', '.'))"
+                }
+              } else {
+                Write-Host "❌ .sonarqube directory does not exist"
+                Write-Host "Current directory: $(Get-Location)"
+                Write-Host "Workspace: ${{ github.workspace }}"
+              }
+              exit 1
+            }
           }
       
       - name: Build solution
@@ -293,11 +323,57 @@ jobs:
             Get-ChildItem | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
           }
           
+          # Verify analysis config file exists (required for sonarscanner end)
+          $configFile = "${{ github.workspace }}\.sonarqube\conf\SonarQubeAnalysisConfig.xml"
+          Write-Host ""
+          Write-Host "=== Verifying SonarScanner session ==="
+          Write-Host "Checking for analysis config file: $configFile"
+          
+          if (-not (Test-Path $configFile)) {
+            Write-Host "❌ Analysis config file NOT found!"
+            Write-Host "This means sonarscanner begin did not complete successfully"
+            Write-Host ""
+            Write-Host "Checking .sonarqube directory structure..."
+            $sonarDir = "${{ github.workspace }}\.sonarqube"
+            if (Test-Path $sonarDir) {
+              Write-Host "✅ .sonarqube directory exists"
+              Write-Host "Contents:"
+              Get-ChildItem -Path $sonarDir -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+                Write-Host "  $($_.FullName.Replace('${{ github.workspace }}', '.'))"
+              }
+            } else {
+              Write-Host "❌ .sonarqube directory does not exist"
+              Write-Host "This indicates sonarscanner begin never ran or failed completely"
+            }
+            Write-Host ""
+            Write-Host "⚠️ Cannot proceed with sonarscanner end without config file"
+            Write-Host "The begin step must have failed or the session was not initialized"
+            exit 1
+          } else {
+            Write-Host "✅ Analysis config file found"
+            $configInfo = Get-Item $configFile
+            Write-Host "   Size: $($configInfo.Length) bytes"
+          }
+          
           # Verify coverage file exists before ending scan
-          $coverageFile = "${{ github.workspace }}/coverage.opencover.xml"
+          $coverageFile = "${{ github.workspace }}\coverage.opencover.xml"
+          Write-Host ""
+          Write-Host "Checking for coverage file: $coverageFile"
           if (-not (Test-Path $coverageFile)) {
-            Write-Host "⚠️ Warning: Coverage file not found at $coverageFile"
+            Write-Host "⚠️ Warning: Coverage file not found"
             Write-Host "SonarCloud will proceed without coverage data"
+            Write-Host ""
+            Write-Host "Searching for coverage files in workspace..."
+            $coverageFiles = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "coverage.opencover.xml" -ErrorAction SilentlyContinue
+            if ($coverageFiles) {
+              Write-Host "Found coverage files:"
+              foreach ($file in $coverageFiles) {
+                Write-Host "  $($file.FullName)"
+              }
+              Write-Host "Copying first found file to workspace root..."
+              Copy-Item -Path $coverageFiles[0].FullName -Destination $coverageFile -Force
+              Write-Host "✅ Copied coverage file to: $coverageFile"
+            }
           } else {
             Write-Host "✅ Coverage file found: $coverageFile"
             $fileInfo = Get-Item $coverageFile
