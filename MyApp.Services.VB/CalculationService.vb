@@ -23,12 +23,11 @@ Namespace MyApp.Services.VB
                 Return 0
             End If
             
-            ' Convert annual rate to monthly and term to years
-            Dim monthlyRate As Decimal = rate / 100 / 12
-            Dim years As Decimal = termMonths / 12.0
+            ' Convert term to years (explicit conversion for Option Strict)
+            Dim years As Decimal = CDec(termMonths) / 12D
             
             ' Simple interest calculation
-            Dim interest As Decimal = principal * (rate / 100) * years
+            Dim interest As Decimal = principal * (rate / 100D) * years
             
             Return Math.Round(interest, 2)
         End Function
@@ -47,13 +46,13 @@ Namespace MyApp.Services.VB
             End If
             
             ' Convert annual rate to monthly
-            Dim monthlyRate As Decimal = annualRate / 100 / 12
+            Dim monthlyRateValue As Decimal = annualRate / 100D / 12D
             
             ' Calculate (1+r)^n
-            Dim onePlusRToN As Decimal = CDec(Math.Pow(CDbl(1 + monthlyRate), termMonths))
+            Dim onePlusRToN As Decimal = CDec(Math.Pow(CDbl(1 + monthlyRateValue), termMonths))
             
             ' Amortization formula
-            Dim monthlyPayment As Decimal = principal * (monthlyRate * onePlusRToN) / (onePlusRToN - 1)
+            Dim monthlyPayment As Decimal = principal * (monthlyRateValue * onePlusRToN) / (onePlusRToN - 1)
             
             Return Math.Round(monthlyPayment, 2)
         End Function
@@ -97,7 +96,10 @@ Namespace MyApp.Services.VB
             ' Ensure score is within valid range (300-850)
             If score < 300 Then
                 score = 300
-            ElseIf score > 850 Then
+            End If
+            
+            ' Cap maximum score at 850
+            If score > 850 Then
                 score = 850
             End If
             
