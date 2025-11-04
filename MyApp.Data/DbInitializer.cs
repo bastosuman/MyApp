@@ -35,6 +35,12 @@ public static class DbInitializer
 
         context.Transactions.AddRange(transactions);
         context.SaveChanges();
+
+        // Seed some sample applications
+        var applications = CreateSeedApplications(accounts, products);
+
+        context.Applications.AddRange(applications);
+        context.SaveChanges();
     }
 
     private static Product[] CreateSeedProducts()
@@ -110,6 +116,84 @@ public static class DbInitializer
             Description = description,
             TransactionDate = transactionDate,
             Status = "Completed"
+        };
+    }
+
+    private static Application[] CreateSeedApplications(Account[] accounts, Product[] products)
+    {
+        var now = DateTime.UtcNow;
+        var personalLoan = products.FirstOrDefault(p => p.Name == "Personal Loan");
+        var homeLoan = products.FirstOrDefault(p => p.Name == "Home Loan");
+        var creditCard = products.FirstOrDefault(p => p.Name == "Credit Card");
+        var savingsAccount = products.FirstOrDefault(p => p.Name == "Savings Account");
+
+        var applications = new List<Application>();
+
+        // Add some pending applications
+        if (accounts.Length > 0 && personalLoan != null)
+        {
+            applications.Add(CreateApplication(
+                accounts[0].Id, 
+                personalLoan.Id, 
+                25000m, 
+                "Pending", 
+                now.AddDays(-5), 
+                null, 
+                "Application for personal loan to consolidate debt"));
+        }
+
+        if (accounts.Length > 1 && creditCard != null)
+        {
+            applications.Add(CreateApplication(
+                accounts[1].Id, 
+                creditCard.Id, 
+                5000m, 
+                "Pending", 
+                now.AddDays(-2), 
+                null, 
+                "Request for credit card with higher limit"));
+        }
+
+        // Add some approved applications
+        if (accounts.Length > 0 && savingsAccount != null)
+        {
+            applications.Add(CreateApplication(
+                accounts[0].Id, 
+                savingsAccount.Id, 
+                10000m, 
+                "Approved", 
+                now.AddMonths(-1), 
+                now.AddMonths(-1).AddDays(3), 
+                "High-yield savings account application approved"));
+        }
+
+        // Add some rejected applications
+        if (accounts.Length > 2 && homeLoan != null)
+        {
+            applications.Add(CreateApplication(
+                accounts[2].Id, 
+                homeLoan.Id, 
+                600000m, 
+                "Rejected", 
+                now.AddMonths(-2), 
+                now.AddMonths(-2).AddDays(7), 
+                "Application rejected due to insufficient credit history"));
+        }
+
+        return applications.ToArray();
+    }
+
+    private static Application CreateApplication(int accountId, int productId, decimal requestedAmount, string status, DateTime applicationDate, DateTime? decisionDate, string? notes)
+    {
+        return new Application
+        {
+            AccountId = accountId,
+            ProductId = productId,
+            RequestedAmount = requestedAmount,
+            Status = status,
+            ApplicationDate = applicationDate,
+            DecisionDate = decisionDate,
+            Notes = notes
         };
     }
 }

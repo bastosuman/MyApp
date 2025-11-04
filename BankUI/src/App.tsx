@@ -1,30 +1,53 @@
 import { useState } from 'react';
 import './App.css';
-import { API_CONFIG } from './config/api.config';
+import { Accounts } from './components/Accounts';
+import { Products } from './components/Products';
+import { Transactions } from './components/Transactions';
+import { Applications } from './components/Applications';
+
+type Tab = 'accounts' | 'products' | 'transactions' | 'applications';
 
 function App() {
-  const [apiUrl] = useState<string>(API_CONFIG.baseURL);
+  const [activeTab, setActiveTab] = useState<Tab>('accounts');
 
   return (
     <div className="App">
       <header className="App-header">
         <h1>MyApp Financial Services</h1>
-        <p>Financial services platform connected to the MyApp .NET backend</p>
-        {apiUrl && (
-          <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '20px' }}>
-            API Endpoint: <code>{apiUrl}</code>
-          </p>
-        )}
-        
-        <div className="api-section">
-          <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '6px', color: '#666' }}>
-            <p>Welcome to the financial services application.</p>
-            <p style={{ marginTop: '10px', fontSize: '0.9em' }}>
-              Financial features will be implemented here.
-            </p>
-          </div>
-        </div>
+        <nav className="nav-tabs">
+          <button
+            className={activeTab === 'accounts' ? 'active' : ''}
+            onClick={() => setActiveTab('accounts')}
+          >
+            Accounts
+          </button>
+          <button
+            className={activeTab === 'products' ? 'active' : ''}
+            onClick={() => setActiveTab('products')}
+          >
+            Products
+          </button>
+          <button
+            className={activeTab === 'transactions' ? 'active' : ''}
+            onClick={() => setActiveTab('transactions')}
+          >
+            Transactions
+          </button>
+          <button
+            className={activeTab === 'applications' ? 'active' : ''}
+            onClick={() => setActiveTab('applications')}
+          >
+            Applications
+          </button>
+        </nav>
       </header>
+
+      <main className="App-main">
+        {activeTab === 'accounts' && <Accounts />}
+        {activeTab === 'products' && <Products />}
+        {activeTab === 'transactions' && <Transactions />}
+        {activeTab === 'applications' && <Applications />}
+      </main>
     </div>
   );
 }

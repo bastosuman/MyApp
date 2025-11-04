@@ -27,10 +27,22 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowBankUI",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:5174")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
+            // Build comprehensive list of allowed origins for development
+            var allowedOrigins = new List<string>();
+            
+            // Add common development ports (including 3002 for this setup)
+            var ports = new[] { 3000, 3001, 3002, 3003, 5173, 5174, 5175, 5176, 5177, 5178, 5179, 5180 };
+            foreach (var port in ports)
+            {
+                allowedOrigins.Add($"http://localhost:{port}");
+                allowedOrigins.Add($"http://127.0.0.1:{port}");
+            }
+
+            policy.WithOrigins(allowedOrigins.ToArray())
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+                // Note: AllowCredentials() removed for development - not needed for simple API calls
+                // and can cause CORS issues when combined with specific origins
         });
 });
 
@@ -43,17 +55,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Enable CORS FIRST - before any other middleware that might redirect
-app.UseCors("AllowBankUI");
-
-// Add global exception handling
-app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
-
 // Only use HTTPS redirection in production
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Add routing FIRST
+app.UseRouting();
+
+// Enable CORS after routing but before authorization
+app.UseCors("AllowBankUI");
+
+// Add global exception handling (after routing but before endpoints)
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseAuthorization();
 
