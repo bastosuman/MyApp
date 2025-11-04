@@ -1,0 +1,29 @@
+Summary
+  Generated on: 11/4/2025 - 11:16:40 AM
+  Parser: OpenCover
+  Assemblies: 2
+  Classes: 6
+  Files: 6
+  Line coverage: 100%
+  Covered lines: 221
+  Uncovered lines: 0
+  Coverable lines: 221
+  Total lines: 297
+  Branch coverage: 100% (2 of 2)
+  Covered branches: 2
+  Total branches: 2
+  Method coverage: 100% (44 of 44)
+  Full method coverage: 100% (44 of 44)
+  Covered methods: 44
+  Fully covered methods: 44
+  Total methods: 44
+
+MyApp.Core                           100%
+  MyApp.Core.Entities.Account        100%
+  MyApp.Core.Entities.Application    100%
+  MyApp.Core.Entities.Product        100%
+  MyApp.Core.Entities.Transaction    100%
+
+MyApp.Data                           100%
+  MyApp.Data.DbInitializer           100%
+  MyApp.Data.FinancialDbContext      100%

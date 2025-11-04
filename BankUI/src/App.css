@@ -83,20 +83,6 @@ body {
   color: #a33;
 }
 
-.weather-data {
-  margin-top: 30px;
-  color: #000000;
-}
-
-.weather-data * {
-  color: #000000;
-}
-
-.weather-data h2 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 1.5em;
-}
 
 table {
   width: 100%;

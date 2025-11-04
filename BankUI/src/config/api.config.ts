@@ -10,7 +10,7 @@ export const API_CONFIG = {
   
   // API endpoints
   endpoints: {
-    weatherForecast: '/WeatherForecast',
+    // Financial endpoints will be added here
   },
   
   // Request timeout in milliseconds

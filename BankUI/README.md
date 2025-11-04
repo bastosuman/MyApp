@@ -47,10 +47,7 @@ src/
 ├── config/
 │   └── api.config.ts      # API configuration
 ├── services/
-│   ├── api.service.ts      # Base API service (axios)
-│   └── weather.service.ts  # Example service for weather API
-├── types/
-│   └── weather.ts          # TypeScript types
+│   └── api.service.ts      # Base API service (axios)
 ├── App.tsx                 # Main App component
 ├── main.tsx                # Entry point
 └── index.css               # Global styles

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Exclude>[MyApp]*Program*</Exclude>
+          <Exclude>[MyApp]*TestConnection*</Exclude>
+          <Exclude>[MyApp.Data]*Migrations*</Exclude>
+          <Exclude>[MyApp.Data]*FinancialDbContextFactory*</Exclude>
+          <Exclude>[MyApp.Data]*FinancialDbContextModelSnapshot*</Exclude>
+          <Exclude>[MyApp.Data]*InitialCreate*</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
+

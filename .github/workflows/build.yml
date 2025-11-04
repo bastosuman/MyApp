@@ -46,11 +46,14 @@ jobs:
           $coveragePath = "${{ github.workspace }}/coverage.opencover.xml"
           Write-Host "Starting SonarCloud scan with coverage path: $coveragePath"
           
-          # Coverage exclusions - exclude generated files, migrations, entry point, and frontend
-          $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs,**/BankUI/**"
+          # Coverage exclusions - exclude generated files, migrations, entry point, test utilities, and frontend
+          $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs,**/TestConnection.cs,**/FinancialDbContextFactory.cs,**/BankUI/**,**/CoverageReport/**"
           
-          # Source exclusions - exclude frontend files from SonarCloud analysis
-          $sourceExclusions = "**/BankUI/**,**/node_modules/**,**/dist/**,**/build/**"
+          # Source exclusions - exclude frontend files, generated reports, and test results from SonarCloud analysis
+          $sourceExclusions = "**/BankUI/**,**/node_modules/**,**/dist/**,**/build/**,**/CoverageReport/**,**/TestResults/**"
+          
+          # Duplication exclusions - exclude generated code and reports from duplication analysis
+          $duplicationExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/CoverageReport/**,**/TestResults/**,**/BankUI/**"
           
           dotnet sonarscanner begin `
             /k:"bastosuman_MyApp" `
@@ -60,7 +63,8 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="$coveragePath" `
             /d:sonar.coverage.exclusions="$coverageExclusions" `
             /d:sonar.csharp.coverage.exclusions="$coverageExclusions" `
-            /d:sonar.exclusions="$sourceExclusions"
+            /d:sonar.exclusions="$sourceExclusions" `
+            /d:sonar.cpd.exclusions="$duplicationExclusions"
       
       - name: Build solution
         shell: powershell
@@ -71,7 +75,7 @@ jobs:
         run: |
           if (Test-Path "**/*Test*.csproj" -PathType Leaf -ErrorAction SilentlyContinue) {
             Write-Host "Running tests with coverage collection..."
-            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+            dotnet test MyApp.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" --settings:"MyApp.Tests/coverlet.runsettings" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
             
             # Find and copy coverage files
             Write-Host "Searching for coverage files..."

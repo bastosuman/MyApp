@@ -131,6 +131,10 @@ coverage*.info
 *.coverage
 *.coveragexml
 
+# Coverage reports (generated files, should not be committed)
+CoverageReport/
+TestResults/
+
 # NCrunch
 _NCrunch_*
 .*crunch*.local.xml

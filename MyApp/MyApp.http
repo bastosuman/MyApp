@@ -1,6 +1,5 @@
 @MyApp_HostAddress = http://localhost:5250
 
-GET {{MyApp_HostAddress}}/weatherforecast/
-Accept: application/json
+# Financial API endpoints will be added here
 
 ###
