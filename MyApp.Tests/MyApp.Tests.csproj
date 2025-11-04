@@ -36,9 +36,6 @@
   
   <ItemGroup>
     <ProjectReference Include="..\MyApp\MyApp.csproj" />
-    <ProjectReference Include="..\MyApp.Services.VB\MyApp.Services.VB.vbproj" />
-    <ProjectReference Include="..\MyApp.Data\MyApp.Data.csproj" />
-    <ProjectReference Include="..\MyApp.Core\MyApp.Core.csproj" />
   </ItemGroup>
 
 </Project>
