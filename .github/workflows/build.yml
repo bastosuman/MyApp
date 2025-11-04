@@ -119,12 +119,53 @@ jobs:
           
           Write-Host "Running tests with coverage collection..."
           
-          # Run tests with coverage collection using coverlet.msbuild
-          # Note: We use MSBuild properties (not runsettings) since we're using coverlet.msbuild package
-          # Avoid brackets in patterns - use file path exclusions instead
-          # Store attribute list in variable to avoid MSBuild comma parsing issues
-          $excludeAttributes = "Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute"
+          # Use runsettings file for coverage collection to avoid MSBuild property parsing issues
+          # This ensures proper Include/Exclude patterns work correctly
+          $runsettingsPath = "${{ github.workspace }}/MyApp.Tests/coverlet.runsettings"
           
+          Write-Host "Using runsettings file: $runsettingsPath"
+          if (Test-Path $runsettingsPath) {
+            Write-Host "✅ Runsettings file found"
+          } else {
+            Write-Host "⚠️ Runsettings file not found, coverage may not be collected properly"
+          }
+          
+          dotnet test MyApp.sln `
+            --configuration Release `
+            --settings "$runsettingsPath" `
+            --collect:"XPlat Code Coverage" `
+            --logger:"trx;LogFileName=test-results.trx" `
+            --results-directory:"${{ runner.temp }}/TestResults" `
+            --verbosity normal
+          
+          # Find and merge coverage files from TestResults
+          Write-Host "Searching for coverage files..."
+          $coverageFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.cobertura.xml" -ErrorAction SilentlyContinue
+          $openCoverFiles = Get-ChildItem -Path "${{ runner.temp }}/TestResults" -Recurse -Filter "coverage.opencover.xml" -ErrorAction SilentlyContinue
+          
+          # Use OpenCover format if available, otherwise Cobertura
+          $foundCoverageFiles = if ($openCoverFiles) { $openCoverFiles } else { $coverageFiles }
+          
+          if ($foundCoverageFiles) {
+            Write-Host "Found $($foundCoverageFiles.Count) coverage file(s):"
+            $destPath = "${{ github.workspace }}/coverage.opencover.xml"
+            
+            # If multiple files, we need to merge them (coverlet.collector should handle this)
+            # For now, take the first one or copy all
+            $firstFile = $foundCoverageFiles | Select-Object -First 1
+            if ($firstFile) {
+              Copy-Item -Path $firstFile.FullName -Destination $destPath -Force
+              Write-Host "✅ Copied coverage file to: $destPath"
+              Write-Host "   Source: $($firstFile.FullName)"
+              Write-Host "   Size: $($firstFile.Length) bytes"
+            }
+          } else {
+            Write-Host "⚠️ No coverage files found in TestResults directory"
+            Write-Host "   Searched in: ${{ runner.temp }}/TestResults"
+          }
+          
+          # Also try using coverlet.msbuild as fallback
+          Write-Host "Running tests with coverlet.msbuild as fallback..."
           dotnet test MyApp.sln `
             --configuration Release `
             /p:CollectCoverage=true `
@@ -133,12 +174,13 @@ jobs:
             /p:CoverletOutputDirectory="${{ github.workspace }}" `
             /p:CoverletMergeAttributes=ExcludeFromCoverage `
             /p:ExcludeByFile="**/Migrations/**" `
-            /p:ExcludeByFile="**/*Tests.csproj" `
+            /p:ExcludeByFile="**/*Tests/**" `
             /p:ExcludeByFile="**/Program.cs" `
-            /p:ExcludeByAttribute="$excludeAttributes" `
-            --logger:"trx;LogFileName=test-results.trx" `
+            /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" `
+            --no-build `
+            --logger:"trx;LogFileName=test-results-msbuild.trx" `
             --results-directory:"${{ runner.temp }}/TestResults" `
-            --verbosity normal
+            --verbosity minimal
           
           if ($LASTEXITCODE -ne 0) {
             Write-Host "⚠️ Tests failed with exit code $LASTEXITCODE"
