@@ -400,10 +400,11 @@ jobs:
           Write-Host "This will upload analysis results to SonarCloud and generate report-task.txt..."
           Write-Host ""
           
-          # Run SonarScanner end with verbose logging and capture all output directly
+          # Run SonarScanner end and capture all output directly
           # Using 2>&1 to capture both stdout and stderr
+          # Note: /v:diag is not supported by sonarscanner end command
           Write-Host "=== Running: dotnet sonarscanner end ==="
-          $endOutput = dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /v:diag 2>&1
+          $endOutput = dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" 2>&1
           $exitCode = $LASTEXITCODE
           
           # Display all output
