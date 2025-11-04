@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace MyApp
 {
-    public class TestConnection
+    public static class TestConnection
     {
         public static void TestDatabaseConnection()
         {

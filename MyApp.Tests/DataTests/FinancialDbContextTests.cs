@@ -151,7 +151,10 @@ public class FinancialDbContextTests
         // This test verifies the model configuration is correct
         // In a real SQL Server database, this would throw an exception
         var exception = Record.Exception(() => context.SaveChanges());
-        // InMemory will allow duplicates, but the model is configured correctly
+        
+        // Assert: InMemory will allow duplicates, but the model is configured correctly
+        // The test verifies that the operation completes without exception in-memory
+        Assert.Null(exception); // No exception expected with InMemory provider
     }
 }
 

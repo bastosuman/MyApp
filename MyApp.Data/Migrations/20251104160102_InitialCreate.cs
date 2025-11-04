@@ -8,20 +8,27 @@ namespace MyApp.Data.Migrations
     /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
+        private const string TableAccounts = "Accounts";
+        private const string TableApplications = "Applications";
+        private const string SqlServerIdentity = "SqlServer:Identity";
+        private const string TypeNvarchar50 = "nvarchar(50)";
+        private const string TypeDecimal182 = "decimal(18,2)";
+        private const string TypeDatetime2 = "datetime2";
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Accounts",
+                name: TableAccounts,
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    AccountNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                        .Annotation(SqlServerIdentity, "1, 1"),
+                    AccountNumber = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
                     AccountHolderName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Balance = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    AccountType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Balance = table.Column<decimal>(type: TypeDecimal182, precision: 18, scale: 2, nullable: false),
+                    AccountType = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: TypeDatetime2, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
@@ -34,15 +41,15 @@ namespace MyApp.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                        .Annotation(SqlServerIdentity, "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    ProductType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    ProductType = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
                     InterestRate = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
-                    MinAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    MaxAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    MinAmount = table.Column<decimal>(type: TypeDecimal182, precision: 18, scale: 2, nullable: false),
+                    MaxAmount = table.Column<decimal>(type: TypeDecimal182, precision: 18, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedDate = table.Column<DateTime>(type: TypeDatetime2, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -54,13 +61,13 @@ namespace MyApp.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                        .Annotation(SqlServerIdentity, "1, 1"),
                     AccountId = table.Column<int>(type: "int", nullable: false),
-                    TransactionType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    TransactionType = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    Amount = table.Column<decimal>(type: TypeDecimal182, precision: 18, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    TransactionDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                    TransactionDate = table.Column<DateTime>(type: TypeDatetime2, nullable: false),
+                    Status = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -68,23 +75,23 @@ namespace MyApp.Data.Migrations
                     table.ForeignKey(
                         name: "FK_Transactions_Accounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Applications",
+                name: TableApplications,
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                        .Annotation(SqlServerIdentity, "1, 1"),
                     AccountId = table.Column<int>(type: "int", nullable: false),
                     ProductId = table.Column<int>(type: "int", nullable: false),
-                    RequestedAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    ApplicationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    DecisionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RequestedAmount = table.Column<decimal>(type: TypeDecimal182, precision: 18, scale: 2, nullable: false),
+                    Status = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    ApplicationDate = table.Column<DateTime>(type: TypeDatetime2, nullable: false),
+                    DecisionDate = table.Column<DateTime>(type: TypeDatetime2, nullable: true),
                     Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
                 },
                 constraints: table =>
@@ -93,7 +100,7 @@ namespace MyApp.Data.Migrations
                     table.ForeignKey(
                         name: "FK_Applications_Accounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -106,18 +113,18 @@ namespace MyApp.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_Accounts_AccountNumber",
-                table: "Accounts",
+                table: TableAccounts,
                 column: "AccountNumber",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Applications_AccountId",
-                table: "Applications",
+                table: TableApplications,
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Applications_ProductId",
-                table: "Applications",
+                table: TableApplications,
                 column: "ProductId");
 
             migrationBuilder.CreateIndex(
@@ -130,7 +137,7 @@ namespace MyApp.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Applications");
+                name: TableApplications);
 
             migrationBuilder.DropTable(
                 name: "Transactions");
@@ -139,7 +146,7 @@ namespace MyApp.Data.Migrations
                 name: "Products");
 
             migrationBuilder.DropTable(
-                name: "Accounts");
+                name: TableAccounts);
         }
     }
 }
