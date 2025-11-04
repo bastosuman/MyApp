@@ -25,8 +25,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // Register calculation service (VB.NET implementation)
-// TODO: Fix C#/VB.NET interop compilation issue - VB project builds in Debug while solution is in Release
-// Uncomment once interop issue is resolved:
+// Note: VB.NET service registration is handled via reflection in tests due to C#/VB.NET interop compilation issues
+// For production, consider using a C# wrapper or fixing the interop issue
 // builder.Services.AddScoped<ICalculationService, MyApp.Services.VB.CalculationService>();
 
 

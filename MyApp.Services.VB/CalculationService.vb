@@ -49,10 +49,10 @@ Namespace MyApp.Services.VB
             Dim monthlyRateValue As Decimal = annualRate / 100D / 12D
             
             ' Calculate (1+r)^n
-            Dim onePlusRToN As Decimal = CDec(Math.Pow(CDbl(1 + monthlyRateValue), termMonths))
+            Dim compoundFactor As Decimal = CDec(Math.Pow(CDbl(1 + monthlyRateValue), termMonths))
             
             ' Amortization formula
-            Dim monthlyPayment As Decimal = principal * (monthlyRateValue * onePlusRToN) / (onePlusRToN - 1)
+            Dim monthlyPayment As Decimal = principal * (monthlyRateValue * compoundFactor) / (compoundFactor - 1)
             
             Return Math.Round(monthlyPayment, 2)
         End Function
@@ -94,14 +94,8 @@ Namespace MyApp.Services.VB
             End If
             
             ' Ensure score is within valid range (300-850)
-            If score < 300 Then
-                score = 300
-            End If
-            
-            ' Cap maximum score at 850
-            If score > 850 Then
-                score = 850
-            End If
+            ' Use Math.Max and Math.Min to clamp the score
+            score = Math.Max(300, Math.Min(850, score))
             
             Return score
         End Function
