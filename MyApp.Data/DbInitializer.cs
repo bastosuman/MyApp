@@ -7,6 +7,8 @@ public static class DbInitializer
 {
     public static void Initialize(FinancialDbContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         // Ensure database is created (should already exist from migration)
         context.Database.EnsureCreated();
 

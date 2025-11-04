@@ -5,98 +5,50 @@ namespace MyApp.Tests
 {
     public class ConfigurationTests
     {
-        [Fact]
-        public void ConnectionString_ShouldBeConfigured()
+        private static IConfiguration BuildConfiguration()
         {
-            // Arrange
-            var configuration = new ConfigurationBuilder()
+            return new ConfigurationBuilder()
                 .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "MyApp"))
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
+        }
 
+        private static string GetConnectionString()
+        {
+            var configuration = BuildConfiguration();
+            return configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+        }
+
+        [Fact]
+        public void ConnectionString_ShouldBeConfigured()
+        {
             // Act
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = GetConnectionString();
 
             // Assert
             Assert.NotNull(connectionString);
             Assert.NotEmpty(connectionString);
         }
 
-        [Fact]
-        public void ConnectionString_ShouldPointToLocalhost()
+        [Theory]
+        [InlineData("Server=localhost")]
+        [InlineData("Database=MyAppFinancial")]
+        [InlineData("Trusted_Connection=True")]
+        [InlineData("TrustServerCertificate=True")]
+        public void ConnectionString_ShouldContainRequiredParts(string expectedPart)
         {
-            // Arrange
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "MyApp"))
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
             // Act
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = GetConnectionString();
 
             // Assert
-            Assert.Contains("Server=localhost", connectionString, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void ConnectionString_ShouldContainDatabaseName()
-        {
-            // Arrange
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "MyApp"))
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            // Act
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            // Assert
-            Assert.Contains("Database=MyAppFinancial", connectionString, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void ConnectionString_ShouldUseTrustedConnection()
-        {
-            // Arrange
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "MyApp"))
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            // Act
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            // Assert
-            Assert.Contains("Trusted_Connection=True", connectionString, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void ConnectionString_ShouldContainTrustServerCertificateForLocalDevelopment()
-        {
-            // Arrange
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "MyApp"))
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            // Act
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            // Assert
-            // TrustServerCertificate=True is required for local development with SQL Server
-            // when SSL certificate validation fails. This is acceptable for local/dev environments.
-            // In production, this should be removed and proper SSL certificates should be used.
-            Assert.Contains("TrustServerCertificate=True", connectionString, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(expectedPart, connectionString, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
         public void Logging_ShouldBeConfigured()
         {
             // Arrange
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "MyApp"))
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
+            var configuration = BuildConfiguration();
 
             // Act
             var loggingSection = configuration.GetSection("Logging");

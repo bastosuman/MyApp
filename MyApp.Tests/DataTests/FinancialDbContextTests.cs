@@ -1,84 +1,48 @@
 using Microsoft.EntityFrameworkCore;
 using MyApp.Core.Entities;
 using MyApp.Data;
+using MyApp.Tests.TestHelpers;
 
 namespace MyApp.Tests.DataTests;
 
 public class FinancialDbContextTests
 {
-    private FinancialDbContext CreateInMemoryDbContext()
-    {
-        var options = new DbContextOptionsBuilder<FinancialDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        return new FinancialDbContext(options);
-    }
 
     [Fact]
     public void FinancialDbContext_ShouldCreateDbContext()
     {
         // Act
-        using var context = CreateInMemoryDbContext();
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
 
         // Assert
         Assert.NotNull(context);
     }
 
-    [Fact]
-    public void FinancialDbContext_ShouldHaveAccountsDbSet()
+    [Theory]
+    [InlineData(nameof(FinancialDbContext.Accounts))]
+    [InlineData(nameof(FinancialDbContext.Transactions))]
+    [InlineData(nameof(FinancialDbContext.Applications))]
+    [InlineData(nameof(FinancialDbContext.Products))]
+    public void FinancialDbContext_ShouldHaveAllDbSets(string dbSetName)
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
+
+        // Act
+        var property = typeof(FinancialDbContext).GetProperty(dbSetName);
+        Assert.NotNull(property);
+        var dbSet = property.GetValue(context);
 
         // Assert
-        Assert.NotNull(context.Accounts);
-    }
-
-    [Fact]
-    public void FinancialDbContext_ShouldHaveTransactionsDbSet()
-    {
-        // Arrange
-        using var context = CreateInMemoryDbContext();
-
-        // Assert
-        Assert.NotNull(context.Transactions);
-    }
-
-    [Fact]
-    public void FinancialDbContext_ShouldHaveApplicationsDbSet()
-    {
-        // Arrange
-        using var context = CreateInMemoryDbContext();
-
-        // Assert
-        Assert.NotNull(context.Applications);
-    }
-
-    [Fact]
-    public void FinancialDbContext_ShouldHaveProductsDbSet()
-    {
-        // Arrange
-        using var context = CreateInMemoryDbContext();
-
-        // Assert
-        Assert.NotNull(context.Products);
+        Assert.NotNull(dbSet);
     }
 
     [Fact]
     public void FinancialDbContext_ShouldSaveAccount()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
-        var account = new Account
-        {
-            AccountNumber = "ACC001",
-            AccountHolderName = "John Doe",
-            Balance = 1000m,
-            AccountType = "Savings",
-            CreatedDate = DateTime.UtcNow,
-            IsActive = true
-        };
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
+        var account = TestDataFactory.CreateTestAccount();
 
         // Act
         context.Accounts.Add(account);
@@ -87,26 +51,16 @@ public class FinancialDbContextTests
         // Assert
         Assert.Single(context.Accounts);
         var savedAccount = context.Accounts.First();
-        Assert.Equal("ACC001", savedAccount.AccountNumber);
-        Assert.Equal("John Doe", savedAccount.AccountHolderName);
+        Assert.Equal(account.AccountNumber, savedAccount.AccountNumber);
+        Assert.Equal(account.AccountHolderName, savedAccount.AccountHolderName);
     }
 
     [Fact]
     public void FinancialDbContext_ShouldSaveProduct()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
-        var product = new Product
-        {
-            Name = "Personal Loan",
-            ProductType = "Loan",
-            InterestRate = 5.5m,
-            MinAmount = 1000m,
-            MaxAmount = 50000m,
-            Description = "Test product",
-            IsActive = true,
-            CreatedDate = DateTime.UtcNow
-        };
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
+        var product = TestDataFactory.CreateTestProduct();
 
         // Act
         context.Products.Add(product);
@@ -115,36 +69,20 @@ public class FinancialDbContextTests
         // Assert
         Assert.Single(context.Products);
         var savedProduct = context.Products.First();
-        Assert.Equal("Personal Loan", savedProduct.Name);
-        Assert.Equal(5.5m, savedProduct.InterestRate);
+        Assert.Equal(product.Name, savedProduct.Name);
+        Assert.Equal(product.InterestRate, savedProduct.InterestRate);
     }
 
     [Fact]
     public void FinancialDbContext_ShouldSaveTransactionWithAccount()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
-        var account = new Account
-        {
-            AccountNumber = "ACC001",
-            AccountHolderName = "John Doe",
-            Balance = 1000m,
-            AccountType = "Savings",
-            CreatedDate = DateTime.UtcNow,
-            IsActive = true
-        };
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
+        var account = TestDataFactory.CreateTestAccount();
         context.Accounts.Add(account);
         context.SaveChanges();
 
-        var transaction = new Transaction
-        {
-            AccountId = account.Id,
-            TransactionType = "Deposit",
-            Amount = 500m,
-            Description = "Test deposit",
-            TransactionDate = DateTime.UtcNow,
-            Status = "Completed"
-        };
+        var transaction = TestDataFactory.CreateTestTransaction(account.Id);
 
         // Act
         context.Transactions.Add(transaction);
@@ -156,7 +94,7 @@ public class FinancialDbContextTests
             .Include(t => t.Account)
             .First();
         Assert.Equal(account.Id, savedTransaction.AccountId);
-        Assert.Equal("Deposit", savedTransaction.TransactionType);
+        Assert.Equal(transaction.TransactionType, savedTransaction.TransactionType);
         Assert.NotNull(savedTransaction.Account);
     }
 
@@ -164,41 +102,16 @@ public class FinancialDbContextTests
     public void FinancialDbContext_ShouldSaveApplicationWithAccountAndProduct()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
         
-        var account = new Account
-        {
-            AccountNumber = "ACC001",
-            AccountHolderName = "John Doe",
-            Balance = 1000m,
-            AccountType = "Savings",
-            CreatedDate = DateTime.UtcNow,
-            IsActive = true
-        };
+        var account = TestDataFactory.CreateTestAccount();
         context.Accounts.Add(account);
 
-        var product = new Product
-        {
-            Name = "Personal Loan",
-            ProductType = "Loan",
-            InterestRate = 5.5m,
-            MinAmount = 1000m,
-            MaxAmount = 50000m,
-            Description = "Test product",
-            IsActive = true,
-            CreatedDate = DateTime.UtcNow
-        };
+        var product = TestDataFactory.CreateTestProduct();
         context.Products.Add(product);
         context.SaveChanges();
 
-        var application = new Application
-        {
-            AccountId = account.Id,
-            ProductId = product.Id,
-            RequestedAmount = 10000m,
-            Status = "Pending",
-            ApplicationDate = DateTime.UtcNow
-        };
+        var application = TestDataFactory.CreateTestApplication(account.Id, product.Id);
 
         // Act
         context.Applications.Add(application);
@@ -220,28 +133,16 @@ public class FinancialDbContextTests
     public void FinancialDbContext_ShouldEnforceUniqueAccountNumber()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
-        var account1 = new Account
-        {
-            AccountNumber = "ACC001",
-            AccountHolderName = "John Doe",
-            Balance = 1000m,
-            AccountType = "Savings",
-            CreatedDate = DateTime.UtcNow,
-            IsActive = true
-        };
+        using var context = TestDbContextFactory.CreateInMemoryDbContext();
+        var account1 = TestDataFactory.CreateTestAccount();
         context.Accounts.Add(account1);
         context.SaveChanges();
 
-        var account2 = new Account
-        {
-            AccountNumber = "ACC001", // Duplicate
-            AccountHolderName = "Jane Smith",
-            Balance = 2000m,
-            AccountType = "Checking",
-            CreatedDate = DateTime.UtcNow,
-            IsActive = true
-        };
+        var account2 = TestDataFactory.CreateTestAccount(
+            accountNumber: "ACC001", // Duplicate
+            accountHolderName: "Jane Smith",
+            balance: 2000m,
+            accountType: "Checking");
 
         // Act & Assert
         context.Accounts.Add(account2);
