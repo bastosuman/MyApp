@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using MyApp.Core.DTOs;
 using MyApp.Helpers;
 
@@ -36,11 +35,14 @@ public class ControllerHelpersTests
 
         // Assert
         Assert.NotNull(result);
-        var actionResult = result!.Value; // This will be null when Result is set
-        var badRequestResult = result.Result as BadRequestObjectResult;
-        Assert.NotNull(badRequestResult);
-        var response = Assert.IsType<ApiResponse<AccountDto>>(badRequestResult!.Value);
-        Assert.False(response.Success);
+        // Verify it returns a non-null ActionResult with Result set
+        Assert.NotNull(result!.Result);
+        // Verify the response contains error information
+        var badRequest = result.Result as BadRequestObjectResult;
+        Assert.NotNull(badRequest);
+        var response = badRequest!.Value as ApiResponse<AccountDto>;
+        Assert.NotNull(response);
+        Assert.False(response!.Success);
         Assert.Contains("Validation failed", response.Message);
         Assert.NotEmpty(response.Errors);
     }
@@ -58,10 +60,11 @@ public class ControllerHelpersTests
 
         // Assert
         Assert.NotNull(result);
-        var badRequestResult = result!.Result as BadRequestObjectResult;
-        Assert.NotNull(badRequestResult);
-        var response = Assert.IsType<ApiResponse<AccountDto>>(badRequestResult!.Value);
-        Assert.Equal(2, response.Errors.Count);
+        var badRequest = result!.Result as BadRequestObjectResult;
+        Assert.NotNull(badRequest);
+        var response = badRequest!.Value as ApiResponse<AccountDto>;
+        Assert.NotNull(response);
+        Assert.Equal(2, response!.Errors.Count);
     }
 }
 
