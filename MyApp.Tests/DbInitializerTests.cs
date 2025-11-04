@@ -7,7 +7,7 @@ namespace MyApp.Tests;
 
 public class DbInitializerTests
 {
-    private ApplicationDbContext CreateInMemoryDbContext()
+    private static ApplicationDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
