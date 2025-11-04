@@ -36,8 +36,8 @@ public class ControllerHelpersTests
 
         // Assert
         Assert.NotNull(result);
-        var actionResult = Assert.IsType<ActionResult<ApiResponse<AccountDto>>>(result);
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
+        Assert.NotNull(result!.Result);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<AccountDto>>(badRequestResult.Value);
         Assert.False(response.Success);
         Assert.Contains("Validation failed", response.Message);
@@ -57,8 +57,8 @@ public class ControllerHelpersTests
 
         // Assert
         Assert.NotNull(result);
-        var actionResult = Assert.IsType<ActionResult<ApiResponse<AccountDto>>>(result);
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
+        Assert.NotNull(result!.Result);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<AccountDto>>(badRequestResult.Value);
         Assert.Equal(2, response.Errors.Count);
     }
