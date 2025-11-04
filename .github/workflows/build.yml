@@ -293,17 +293,55 @@ jobs:
           Write-Host "Running SonarScanner end command..."
           Write-Host "This will upload analysis results to SonarCloud and generate report-task.txt..."
           
-          # Run SonarScanner end and show output in real-time
-          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
-          $exitCode = $LASTEXITCODE
+          # Capture full output to see any errors
+          $output = @()
+          $errorOutput = @()
+          
+          # Run SonarScanner end with verbose logging and capture all output
+          $process = Start-Process -FilePath "dotnet" `
+            -ArgumentList "sonarscanner","end","/d:sonar.login=$env:SONAR_TOKEN","/v:diag" `
+            -NoNewWindow -PassThru -Wait -RedirectStandardOutput "$env:TEMP\sonar_end_output.txt" -RedirectStandardError "$env:TEMP\sonar_end_error.txt"
+          
+          $exitCode = $process.ExitCode
+          
+          # Read and display output
+          if (Test-Path "$env:TEMP\sonar_end_output.txt") {
+            $output = Get-Content "$env:TEMP\sonar_end_output.txt"
+            Write-Host "=== SonarScanner End Output ==="
+            $output | ForEach-Object { Write-Host $_ }
+          }
+          
+          if (Test-Path "$env:TEMP\sonar_end_error.txt") {
+            $errorOutput = Get-Content "$env:TEMP\sonar_end_error.txt"
+            Write-Host "=== SonarScanner End Error Output ==="
+            $errorOutput | ForEach-Object { Write-Host $_ }
+          }
           
           Write-Host "SonarScanner end command exited with code: $exitCode"
           
-          if ($exitCode -ne 0) {
-            Write-Host "❌ SonarScanner end failed with exit code $exitCode"
-            Write-Host "Check SonarCloud dashboard for analysis status"
+          # Check for specific error patterns
+          $allOutput = ($output + $errorOutput) -join "`n"
+          $hasError = $allOutput -match "ERROR|FAILED|Exception|Failed to"
+          
+          if ($exitCode -ne 0 -or $hasError) {
+            Write-Host "❌ SonarScanner end failed or encountered errors"
+            Write-Host "Exit code: $exitCode"
+            if ($hasError) {
+              Write-Host "Error detected in output (see above)"
+            }
+            Write-Host ""
+            Write-Host "Common causes:"
+            Write-Host "  - Invalid SONAR_TOKEN"
+            Write-Host "  - Network issues connecting to SonarCloud"
+            Write-Host "  - SonarCloud project configuration errors"
+            Write-Host "  - Analysis data corruption or missing files"
+            Write-Host "  - Project key or organization mismatch"
+            Write-Host ""
+            Write-Host "Check SonarCloud dashboard for analysis status:"
+            Write-Host "https://sonarcloud.io/project/overview?id=bastosuman_MyApp"
           } else {
             Write-Host "✅ SonarScanner end completed successfully"
+            Write-Host "Analysis should have been uploaded to SonarCloud"
           }
           
           # The report file is created in .sonarqube/out/[sessionId]/report-task.txt
