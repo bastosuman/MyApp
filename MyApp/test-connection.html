@@ -57,34 +57,19 @@
 </head>
 <body>
     <h1>Test MyApp API Connection</h1>
-    <button onclick="fetchData()">Fetch Data from MyApp API</button>
+    <h2>MyApp Financial Services API</h2>
+    <button onclick="fetchData()">Test Connection</button>
     
     <div id="status"></div>
-    
-    <h2>Weather Forecast Data from MyApp:</h2>
-    <table id="dataTable">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temperature (°C)</th>
-                <th>Temperature (°F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-        </tbody>
-    </table>
 
     <script>
         async function fetchData() {
             const statusDiv = document.getElementById('status');
-            const tableBody = document.getElementById('tableBody');
             
-            statusDiv.innerHTML = '<p>Fetching data...</p>';
-            tableBody.innerHTML = '';
+            statusDiv.innerHTML = '<p>Testing connection...</p>';
             
             try {
-                const response = await fetch('http://localhost:5250/WeatherForecast', {
+                const response = await fetch('http://localhost:5250/swagger/v1/swagger.json', {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -97,21 +82,10 @@
                 
                 const data = await response.json();
                 
-                if (data && data.length > 0) {
-                    statusDiv.innerHTML = `<div class="status success">✓ Successfully connected! Retrieved ${data.length} records.</div>`;
-                    
-                    data.forEach(forecast => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${forecast.date}</td>
-                            <td>${forecast.temperatureC}</td>
-                            <td>${forecast.temperatureF}</td>
-                            <td>${forecast.summary || 'N/A'}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
+                if (data) {
+                    statusDiv.innerHTML = `<div class="status success">✓ Successfully connected to MyApp Financial Services API!<br>Swagger UI available at <a href="http://localhost:5250/swagger" target="_blank">http://localhost:5250/swagger</a></div>`;
                 } else {
-                    statusDiv.innerHTML = '<div class="status error">No data received from API.</div>';
+                    statusDiv.innerHTML = '<div class="status error">No response from API.</div>';
                 }
             } catch (error) {
                 statusDiv.innerHTML = `<div class="status error">Error: ${error.message}<br>Make sure the backend is running on http://localhost:5250</div>`;
