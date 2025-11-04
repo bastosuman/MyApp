@@ -27,10 +27,20 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowBankUI",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:5174")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
+            // Allow common development ports
+            policy.WithOrigins(
+                    "http://localhost:3000",
+                    "http://localhost:5173",
+                    "http://localhost:5174",
+                    "http://localhost:5175",
+                    "http://127.0.0.1:3000",
+                    "http://127.0.0.1:5173",
+                    "http://127.0.0.1:5174",
+                    "http://127.0.0.1:5175"
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
         });
 });
 
@@ -43,21 +53,24 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Enable CORS FIRST - before any other middleware that might redirect
-app.UseCors("AllowBankUI");
-
-// Add global exception handling
-app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
-
 // Only use HTTPS redirection in production
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
+// Add routing FIRST
+app.UseRouting();
+
+// Enable CORS after routing but before authorization
+app.UseCors("AllowBankUI");
+
+// Add global exception handling (after routing but before endpoints)
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers().RequireCors("AllowBankUI");
 
 // Initialize database with seed data (only in development)
 if (app.Environment.IsDevelopment())

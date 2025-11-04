@@ -34,6 +34,10 @@ public class GlobalExceptionHandlerMiddleware
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        // Ensure CORS headers are preserved even when handling exceptions
+        context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"]);
+        context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+        
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
