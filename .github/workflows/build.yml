@@ -237,155 +237,93 @@ jobs:
             Write-Host "   Size: $($fileInfo.Length) bytes"
           }
           
-          # End SonarScanner with verbose output
+          # End SonarScanner - this uploads results and generates report-task.txt
           Write-Host "Running SonarScanner end command..."
-          Write-Host "This will upload analysis results to SonarCloud..."
+          Write-Host "This will upload analysis results to SonarCloud and generate report-task.txt..."
           
-          # Run SonarScanner end and capture both stdout and stderr
-          $scannerOutput = ""
-          $scannerError = ""
+          # Run SonarScanner end and show output in real-time
+          dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+          $exitCode = $LASTEXITCODE
           
-          try {
-            # Redirect both streams
-            $scannerProcess = Start-Process -FilePath "dotnet" -ArgumentList "sonarscanner","end","/d:sonar.login=$env:SONAR_TOKEN","/v:diag" -NoNewWindow -Wait -PassThru -RedirectStandardOutput "$env:TEMP\sonar_output.txt" -RedirectStandardError "$env:TEMP\sonar_error.txt"
-            $exitCode = $scannerProcess.ExitCode
-            
-            # Read the output files
-            if (Test-Path "$env:TEMP\sonar_output.txt") {
-              $scannerOutput = Get-Content "$env:TEMP\sonar_output.txt" -Raw
-            }
-            if (Test-Path "$env:TEMP\sonar_error.txt") {
-              $scannerError = Get-Content "$env:TEMP\sonar_error.txt" -Raw
-            }
-          } catch {
-            # Fallback to direct execution if Start-Process fails
-            $scannerOutput = dotnet sonarscanner end /d:sonar.login="$env:SONAR_TOKEN" /v:diag 2>&1
-            $exitCode = $LASTEXITCODE
-          }
+          Write-Host "SonarScanner end command exited with code: $exitCode"
           
-          Write-Host "=== SonarScanner Standard Output ==="
-          Write-Host $scannerOutput
-          Write-Host "=== SonarScanner Error Output ==="
-          Write-Host $scannerError
-          Write-Host "=== SonarScanner Exit Code: $exitCode ==="
-          
-          # Check for success indicators in output
-          $hasSuccess = $scannerOutput -match "EXECUTION SUCCESS" -or $scannerOutput -match "analysis.*success"
-          $hasError = $scannerOutput -match "ERROR" -or $scannerError -match "ERROR" -or $scannerOutput -match "FAILED" -or $scannerError -match "FAILED"
-          
-          if ($exitCode -ne 0 -or $hasError) {
-            Write-Host "❌ SonarScanner end failed or encountered errors"
-            Write-Host "Exit code: $exitCode"
-            Write-Host "This indicates the analysis upload to SonarCloud may have failed"
-            Write-Host "Common causes:"
-            Write-Host "  - Invalid SONAR_TOKEN"
-            Write-Host "  - Network issues"
-            Write-Host "  - SonarCloud project configuration errors"
-            Write-Host "  - Analysis data corruption"
+          if ($exitCode -ne 0) {
+            Write-Host "❌ SonarScanner end failed with exit code $exitCode"
+            Write-Host "Check SonarCloud dashboard for analysis status"
           } else {
             Write-Host "✅ SonarScanner end completed successfully"
-            Write-Host "Analysis results should have been uploaded to SonarCloud"
           }
           
-          Write-Host "✅ SonarCloud scan completed"
-          
-          # Wait for file system and allow SonarCloud time to process
-          Write-Host "Waiting for report file to be generated..."
-          Start-Sleep -Seconds 3
-          
-          # Poll for report file (up to 10 seconds)
+          # The report file is created in .sonarqube/out/[sessionId]/report-task.txt
+          # Find it by searching the out directory
           $reportFile = "${{ github.workspace }}/.sonarqube/report-task.txt"
-          $maxAttempts = 5
-          $attempt = 0
           $reportFound = $false
           
-          while ($attempt -lt $maxAttempts -and -not $reportFound) {
-            $attempt++
-            Write-Host "Checking for report file (attempt $attempt/$maxAttempts)..."
-            
-            # Check multiple possible locations
-            $possiblePaths = @(
-              "${{ github.workspace }}/.sonarqube/report-task.txt",
-              ".sonarqube/report-task.txt",
-              "${{ github.workspace }}/report-task.txt",
-              "report-task.txt"
-            )
-            
-            foreach ($path in $possiblePaths) {
-              if (Test-Path $path) {
-                Write-Host "✅ Report file found at: $path"
-                # Copy to expected location if needed
-                if ($path -ne $reportFile) {
-                  $reportDir = Split-Path -Parent $reportFile
-                  if (-not (Test-Path $reportDir)) {
-                    New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
-                  }
-                  Copy-Item -Path $path -Destination $reportFile -Force
-                  Write-Host "  ✅ Copied to expected location: $reportFile"
-                }
-                $reportFound = $true
-                break
-              }
-            }
-            
-            if (-not $reportFound) {
-              # Check .sonarqube directory structure
-              if (Test-Path $sonarDir) {
-                Write-Host "  .sonarqube directory exists, checking contents..."
-                $allFiles = Get-ChildItem -Path $sonarDir -Recurse -ErrorAction SilentlyContinue
-                Write-Host "  Found $($allFiles.Count) files in .sonarqube"
-                $txtFiles = $allFiles | Where-Object { $_.Extension -eq ".txt" }
-                if ($txtFiles) {
-                  Write-Host "  Found .txt files:"
-                  foreach ($txt in $txtFiles) {
-                    Write-Host "    $($txt.FullName)"
-                    if ($txt.Name -eq "report-task.txt" -or $txt.FullName -like "*report-task*") {
-                      Copy-Item -Path $txt.FullName -Destination $reportFile -Force
-                      Write-Host "  ✅ Copied report file to expected location"
-                      $reportFound = $true
-                      break
-                    }
-                  }
-                }
-              }
-              
-              if (-not $reportFound -and $attempt -lt $maxAttempts) {
-                Write-Host "  Report file not found, waiting 2 seconds before retry..."
-                Start-Sleep -Seconds 2
-              }
-            }
-          }
+          Write-Host "Searching for report-task.txt in .sonarqube/out directory..."
           
-          if ($reportFound) {
-            Write-Host "✅ Report file found and ready"
-            Write-Host "Report file contents:"
-            Get-Content $reportFile
-          } else {
-            Write-Host "⚠️ Report file not found after $maxAttempts attempts"
-            Write-Host "This may mean:"
-            Write-Host "  - The analysis is still processing on SonarCloud (check dashboard)"
-            Write-Host "  - The upload failed (check SonarScanner output above)"
-            Write-Host "  - The file is in an unexpected location"
-            Write-Host "Searching entire workspace for report-task.txt..."
-            $foundReports = Get-ChildItem -Path "${{ github.workspace }}" -Recurse -Filter "report-task.txt" -ErrorAction SilentlyContinue
-            if ($foundReports) {
-              Write-Host "Found report files:"
-              foreach ($report in $foundReports) {
-                Write-Host "  $($report.FullName)"
-                Write-Host "  Contents:"
-                Get-Content $report.FullName
+          # Check .sonarqube/out subdirectories for report-task.txt
+          $outDir = "${{ github.workspace }}/.sonarqube/out"
+          if (Test-Path $outDir) {
+            $outSubdirs = Get-ChildItem -Path $outDir -Directory -ErrorAction SilentlyContinue
+            foreach ($subdir in $outSubdirs) {
+              $possibleReport = Join-Path $subdir.FullName "report-task.txt"
+              if (Test-Path $possibleReport) {
+                Write-Host "✅ Found report file at: $possibleReport"
+                Write-Host "Report file contents:"
+                Get-Content $possibleReport
+                
                 # Copy to expected location
                 $reportDir = Split-Path -Parent $reportFile
                 if (-not (Test-Path $reportDir)) {
                   New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
                 }
-                Copy-Item -Path $report.FullName -Destination $reportFile -Force
-                Write-Host "  ✅ Copied to expected location: $reportFile"
+                Copy-Item -Path $possibleReport -Destination $reportFile -Force
+                Write-Host "✅ Copied to expected location: $reportFile"
                 $reportFound = $true
+                break
               }
-            } else {
-              Write-Host "❌ No report-task.txt files found anywhere in workspace"
             }
+          }
+          
+          # Also check the root .sonarqube directory
+          if (-not $reportFound) {
+            $rootReport = "${{ github.workspace }}/.sonarqube/report-task.txt"
+            if (Test-Path $rootReport) {
+              Write-Host "✅ Found report file at root: $rootReport"
+              Write-Host "Report file contents:"
+              Get-Content $rootReport
+              $reportFound = $true
+            }
+          }
+          
+          # Final search - check all .txt files in .sonarqube
+          if (-not $reportFound) {
+            Write-Host "Searching all .txt files in .sonarqube directory..."
+            $allTxtFiles = Get-ChildItem -Path "${{ github.workspace }}/.sonarqube" -Recurse -Filter "*.txt" -ErrorAction SilentlyContinue
+            foreach ($txt in $allTxtFiles) {
+              Write-Host "Found: $($txt.FullName)"
+              if ($txt.Name -eq "report-task.txt") {
+                Write-Host "✅ Found report file: $($txt.FullName)"
+                Write-Host "Contents:"
+                Get-Content $txt.FullName
+                
+                # Copy to expected location
+                $reportDir = Split-Path -Parent $reportFile
+                if (-not (Test-Path $reportDir)) {
+                  New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
+                }
+                Copy-Item -Path $txt.FullName -Destination $reportFile -Force
+                Write-Host "✅ Copied to expected location: $reportFile"
+                $reportFound = $true
+                break
+              }
+            }
+          }
+          
+          if (-not $reportFound) {
+            Write-Host "⚠️ Report file not found"
+            Write-Host "The analysis may still be processing on SonarCloud"
+            Write-Host "Check https://sonarcloud.io/project/overview?id=bastosuman_MyApp for status"
           }
       
       - name: Verify report file exists
