@@ -355,14 +355,33 @@ jobs:
           # Find it by searching the out directory
           $reportFile = "${{ github.workspace }}/.sonarqube/report-task.txt"
           $reportFound = $false
+          $reportPath = $null
           
-          Write-Host "Searching for report-task.txt in .sonarqube/out directory..."
+          Write-Host ""
+          Write-Host "=== Searching for report-task.txt ==="
+          Write-Host "Expected location: $reportFile"
+          
+          # First check if .sonarqube directory exists
+          $sonarDir = "${{ github.workspace }}/.sonarqube"
+          if (-not (Test-Path $sonarDir)) {
+            Write-Host "⚠️ .sonarqube directory does not exist"
+            Write-Host "This suggests SonarScanner begin may not have initialized properly"
+          } else {
+            Write-Host "✅ .sonarqube directory exists"
+            Write-Host "Contents of .sonarqube:"
+            Get-ChildItem -Path $sonarDir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+          }
           
           # Check .sonarqube/out subdirectories for report-task.txt
           $outDir = "${{ github.workspace }}/.sonarqube/out"
           if (Test-Path $outDir) {
+            Write-Host ""
+            Write-Host "Checking .sonarqube/out subdirectories..."
             $outSubdirs = Get-ChildItem -Path $outDir -Directory -ErrorAction SilentlyContinue
+            Write-Host "Found $($outSubdirs.Count) subdirectory(ies) in .sonarqube/out"
+            
             foreach ($subdir in $outSubdirs) {
+              Write-Host "  Checking: $($subdir.Name)"
               $possibleReport = Join-Path $subdir.FullName "report-task.txt"
               if (Test-Path $possibleReport) {
                 Write-Host "✅ Found report file at: $possibleReport"
@@ -377,9 +396,14 @@ jobs:
                 Copy-Item -Path $possibleReport -Destination $reportFile -Force
                 Write-Host "✅ Copied to expected location: $reportFile"
                 $reportFound = $true
+                $reportPath = $reportFile
                 break
+              } else {
+                Write-Host "    No report-task.txt found in this directory"
               }
             }
+          } else {
+            Write-Host "⚠️ .sonarqube/out directory does not exist"
           }
           
           # Also check the root .sonarqube directory
