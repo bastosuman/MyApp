@@ -40,8 +40,9 @@ builder.Services.AddCors(options =>
 
             policy.WithOrigins(allowedOrigins.ToArray())
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+                .AllowAnyMethod();
+                // Note: AllowCredentials() removed for development - not needed for simple API calls
+                // and can cause CORS issues when combined with specific origins
         });
 });
 
