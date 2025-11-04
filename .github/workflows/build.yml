@@ -121,6 +121,7 @@ jobs:
           
           # Run tests with coverage collection using coverlet.msbuild
           # Note: We use MSBuild properties (not runsettings) since we're using coverlet.msbuild package
+          # Escape brackets in exclude/include patterns by using single quotes in PowerShell
           dotnet test MyApp.sln `
             --configuration Release `
             /p:CollectCoverage=true `
@@ -128,9 +129,9 @@ jobs:
             /p:CoverletOutput="${{ github.workspace }}/coverage.opencover.xml" `
             /p:CoverletOutputDirectory="${{ github.workspace }}" `
             /p:CoverletMergeAttributes=ExcludeFromCoverage `
-            /p:Exclude="[*.Tests]*,[*.Migrations]*,[*]*Program" `
+            /p:Exclude='[*.Tests]*,[*.Migrations]*,[*]*Program' `
             /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" `
-            /p:Include="[MyApp]*,[MyApp.Core]*,[MyApp.Data]*" `
+            /p:Include='[MyApp]*,[MyApp.Core]*,[MyApp.Data]*' `
             --logger:"trx;LogFileName=test-results.trx" `
             --results-directory:"${{ runner.temp }}/TestResults" `
             --verbosity normal
