@@ -239,9 +239,7 @@ jobs:
             Write-Host "Coverage file not found after collector run, trying coverlet.msbuild..."
             
             # Fallback to coverlet.msbuild if collector didn't generate coverage
-            # Store attribute list in variable to avoid MSBuild comma parsing issues
-            $excludeAttrs = "Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute"
-            
+            # Use separate /p:ExcludeByAttribute switches for each attribute to avoid MSBuild comma parsing issues
             dotnet test MyApp.sln `
               --configuration Release `
               /p:CollectCoverage=true `
@@ -252,7 +250,9 @@ jobs:
               /p:ExcludeByFile="**/Migrations/**" `
               /p:ExcludeByFile="**/*Tests/**" `
               /p:ExcludeByFile="**/Program.cs" `
-              /p:ExcludeByAttribute="$excludeAttrs" `
+              /p:ExcludeByAttribute="Obsolete" `
+              /p:ExcludeByAttribute="GeneratedCodeAttribute" `
+              /p:ExcludeByAttribute="CompilerGeneratedAttribute" `
               --no-build `
               --logger:"trx;LogFileName=test-results-msbuild.trx" `
               --results-directory:"${{ runner.temp }}/TestResults" `

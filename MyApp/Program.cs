@@ -27,7 +27,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register calculation service (VB.NET implementation)
 // Note: VB.NET service registration is handled via reflection in tests due to C#/VB.NET interop compilation issues
 // For production, consider using a C# wrapper or fixing the interop issue
-// builder.Services.AddScoped<ICalculationService, MyApp.Services.VB.CalculationService>();
+builder.Services.AddScoped<ICalculationService, MyApp.Services.VB.CalculationService>();
 
 
 // Add CORS to allow BankUI frontend to connect
