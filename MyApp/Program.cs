@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MyApp.Data;
+using MyApp.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,9 @@ if (app.Environment.IsDevelopment())
 
 // Enable CORS FIRST - before any other middleware that might redirect
 app.UseCors("AllowBankUI");
+
+// Add global exception handling
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 // Only use HTTPS redirection in production
 if (!app.Environment.IsDevelopment())
