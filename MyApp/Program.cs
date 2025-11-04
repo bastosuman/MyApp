@@ -25,8 +25,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // Register calculation service (VB.NET implementation)
-// TODO: Fix VB.NET interop issue - CalculationService not being found
-// builder.Services.AddScoped<ICalculationService, MyApp.Services.VB.CalculationService>();
+builder.Services.AddScoped<ICalculationService, MyApp.Services.VB.CalculationService>();
 
 
 // Add CORS to allow BankUI frontend to connect

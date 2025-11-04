@@ -155,7 +155,7 @@ public class DbInitializerTests
 
         // Assert
         var products = context.Products.ToList();
-        Assert.Equal(1, products.Count);
+        Assert.Single(products);
         Assert.Contains(products, p => p.Name == "Existing Product");
         Assert.DoesNotContain(products, p => p.Name == "Personal Loan");
     }
@@ -182,7 +182,7 @@ public class DbInitializerTests
 
         // Assert
         var accounts = context.Accounts.ToList();
-        Assert.Equal(1, accounts.Count);
+        Assert.Single(accounts);
         Assert.Contains(accounts, a => a.AccountNumber == "EXISTING001");
         Assert.DoesNotContain(accounts, a => a.AccountNumber == "ACC001");
     }
@@ -212,7 +212,7 @@ public class DbInitializerTests
         // Assert
         var products = context.Products.ToList();
         var accounts = context.Accounts.ToList();
-        Assert.Equal(1, products.Count); // Only existing product
+        Assert.Single(products); // Only existing product
         Assert.Equal(3, accounts.Count); // Should add seed accounts
     }
 
@@ -240,7 +240,7 @@ public class DbInitializerTests
         var products = context.Products.ToList();
         var accounts = context.Accounts.ToList();
         Assert.Equal(4, products.Count); // Should add seed products
-        Assert.Equal(1, accounts.Count); // Only existing account
+        Assert.Single(accounts); // Only existing account
     }
 
     [Fact]

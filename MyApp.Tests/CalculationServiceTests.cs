@@ -40,7 +40,7 @@ public class CalculationServiceTests
                     catch (ReflectionTypeLoadException ex)
                     {
                         // Handle partially loaded types
-                        allTypes = ex.Types.Where(t => t != null).ToArray();
+                        allTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
                     }
                     
                     if (allTypes != null)
@@ -219,10 +219,10 @@ public class CalculationServiceTests
                             {
                                 types = loadedAssembly.GetTypes();
                             }
-                            catch (ReflectionTypeLoadException ex)
-                            {
-                                types = ex.Types.Where(t => t != null).ToArray();
-                            }
+                                    catch (ReflectionTypeLoadException ex)
+                                    {
+                                        types = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
+                                    }
                             
                             if (types != null)
                             {

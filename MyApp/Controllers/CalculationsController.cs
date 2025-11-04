@@ -27,12 +27,13 @@ public class CalculationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult CalculateInterest([FromBody] InterestCalculationRequest request)
     {
-        if (request.Principal <= 0 || request.Rate <= 0 || request.TermMonths <= 0)
+        if (request.Principal == null || request.Rate == null || request.TermMonths == null ||
+            request.Principal <= 0 || request.Rate <= 0 || request.TermMonths <= 0)
         {
             return BadRequest("Principal, rate, and term must be greater than 0");
         }
 
-        var interest = _calculationService.CalculateInterest(request.Principal, request.Rate, request.TermMonths);
+        var interest = _calculationService.CalculateInterest(request.Principal.Value, request.Rate.Value, request.TermMonths.Value);
         return Ok(new InterestResponse(interest));
     }
 
@@ -44,18 +45,19 @@ public class CalculationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult CalculateMonthlyPayment([FromBody] PaymentCalculationRequest request)
     {
-        if (request.Principal <= 0 || request.TermMonths <= 0)
+        if (request.Principal == null || request.TermMonths == null ||
+            request.Principal <= 0 || request.TermMonths <= 0)
         {
             return BadRequest("Principal and term must be greater than 0");
         }
 
         var monthlyPayment = _calculationService.CalculateMonthlyPayment(
-            request.Principal,
-            request.AnnualRate,
-            request.TermMonths);
+            request.Principal.Value,
+            request.AnnualRate ?? 0m,
+            request.TermMonths.Value);
         
-        var totalPayment = _calculationService.CalculateTotalPayment(monthlyPayment, request.TermMonths);
-        var totalInterest = totalPayment - request.Principal;
+        var totalPayment = _calculationService.CalculateTotalPayment(monthlyPayment, request.TermMonths.Value);
+        var totalInterest = totalPayment - request.Principal.Value;
 
         return Ok(new MonthlyPaymentResponse(monthlyPayment, totalPayment, totalInterest));
     }
@@ -68,16 +70,17 @@ public class CalculationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult CalculateCreditScore([FromBody] CreditScoreRequest request)
     {
-        if (request.MonthlyIncome < 0 || request.MonthlyDebt < 0)
+        if (request.MonthlyIncome == null || request.MonthlyDebt == null ||
+            request.MonthlyIncome < 0 || request.MonthlyDebt < 0)
         {
             return BadRequest("Income and debt cannot be negative");
         }
 
         var creditScore = _calculationService.CalculateCreditScore(
-            request.MonthlyIncome,
-            request.MonthlyDebt,
-            request.CreditHistoryMonths,
-            request.HasBankruptcy);
+            request.MonthlyIncome.Value,
+            request.MonthlyDebt.Value,
+            request.CreditHistoryMonths ?? 0,
+            request.HasBankruptcy ?? false);
 
         return Ok(new CreditScoreResponse(creditScore));
     }
@@ -85,20 +88,20 @@ public class CalculationsController : ControllerBase
 
 // Request DTOs
 public record InterestCalculationRequest(
-    [Required] decimal Principal, 
-    [Required] decimal Rate, 
-    [Required] int TermMonths);
+    [Required] decimal? Principal, 
+    [Required] decimal? Rate, 
+    [Required] int? TermMonths);
 
 public record PaymentCalculationRequest(
-    [Required] decimal Principal, 
-    [Required] decimal AnnualRate, 
-    [Required] int TermMonths);
+    [Required] decimal? Principal, 
+    [Required] decimal? AnnualRate, 
+    [Required] int? TermMonths);
 
 public record CreditScoreRequest(
-    [Required] decimal MonthlyIncome, 
-    [Required] decimal MonthlyDebt, 
-    [Required] int CreditHistoryMonths, 
-    [Required] bool HasBankruptcy);
+    [Required] decimal? MonthlyIncome, 
+    [Required] decimal? MonthlyDebt, 
+    [Required] int? CreditHistoryMonths, 
+    [Required] bool? HasBankruptcy);
 
 // Response DTOs
 public record InterestResponse(decimal Interest);

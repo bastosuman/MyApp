@@ -7,7 +7,7 @@ namespace MyApp.Tests;
 
 public class ApplicationDbContextTests
 {
-    private ApplicationDbContext CreateInMemoryDbContext()
+    private static ApplicationDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -156,7 +156,7 @@ public class ApplicationDbContextTests
 
         // Assert
         Assert.NotNull(foreignKey);
-        Assert.Equal("AccountId", foreignKey!.Properties.First().Name);
+        Assert.Equal("AccountId", foreignKey!.Properties[0].Name);
         Assert.Equal(DeleteBehavior.Restrict, foreignKey.DeleteBehavior);
         
         // Note: InMemory database doesn't enforce foreign key constraints at runtime,
