@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyApp.Core.DTOs;
 using MyApp.Core.Entities;
+using MyApp.Core.Mappers;
 using MyApp.Data;
+using MyApp.Data.Mappers;
 using MyApp.Helpers;
 
 namespace MyApp.Controllers;
@@ -39,19 +41,7 @@ public class ApplicationsController : ControllerBase
             }
 
             var applications = await query
-                .Select(a => new ApplicationDto
-                {
-                    Id = a.Id,
-                    AccountId = a.AccountId,
-                    ProductId = a.ProductId,
-                    RequestedAmount = a.RequestedAmount,
-                    Status = a.Status,
-                    ApplicationDate = a.ApplicationDate,
-                    DecisionDate = a.DecisionDate,
-                    Notes = a.Notes,
-                    AccountNumber = a.Account.AccountNumber,
-                    ProductName = a.Product.Name
-                })
+                .ToDtoQuery()
                 .OrderByDescending(a => a.ApplicationDate)
                 .ToListAsync();
 
@@ -76,19 +66,7 @@ public class ApplicationsController : ControllerBase
                 .Include(a => a.Account)
                 .Include(a => a.Product)
                 .Where(a => a.Id == id)
-                .Select(a => new ApplicationDto
-                {
-                    Id = a.Id,
-                    AccountId = a.AccountId,
-                    ProductId = a.ProductId,
-                    RequestedAmount = a.RequestedAmount,
-                    Status = a.Status,
-                    ApplicationDate = a.ApplicationDate,
-                    DecisionDate = a.DecisionDate,
-                    Notes = a.Notes,
-                    AccountNumber = a.Account.AccountNumber,
-                    ProductName = a.Product.Name
-                })
+                .ToDtoQuery()
                 .FirstOrDefaultAsync();
 
             if (application == null)
@@ -163,19 +141,7 @@ public class ApplicationsController : ControllerBase
                 .Reference(a => a.Product)
                 .LoadAsync();
 
-            var applicationDto = new ApplicationDto
-            {
-                Id = application.Id,
-                AccountId = application.AccountId,
-                ProductId = application.ProductId,
-                RequestedAmount = application.RequestedAmount,
-                Status = application.Status,
-                ApplicationDate = application.ApplicationDate,
-                DecisionDate = application.DecisionDate,
-                Notes = application.Notes,
-                AccountNumber = application.Account.AccountNumber,
-                ProductName = application.Product.Name
-            };
+            var applicationDto = application.ToDto();
 
             return CreatedAtAction(nameof(GetApplication), new { id = application.Id },
                 ApiResponse<ApplicationDto>.SuccessResponse(applicationDto, "Application submitted successfully"));
@@ -224,19 +190,7 @@ public class ApplicationsController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            var applicationDto = new ApplicationDto
-            {
-                Id = application.Id,
-                AccountId = application.AccountId,
-                ProductId = application.ProductId,
-                RequestedAmount = application.RequestedAmount,
-                Status = application.Status,
-                ApplicationDate = application.ApplicationDate,
-                DecisionDate = application.DecisionDate,
-                Notes = application.Notes,
-                AccountNumber = application.Account.AccountNumber,
-                ProductName = application.Product.Name
-            };
+            var applicationDto = application.ToDto();
 
             return Ok(ApiResponse<ApplicationDto>.SuccessResponse(applicationDto, "Application status updated successfully"));
         }
@@ -265,19 +219,7 @@ public class ApplicationsController : ControllerBase
                 .Include(a => a.Account)
                 .Include(a => a.Product)
                 .Where(a => a.AccountId == accountId)
-                .Select(a => new ApplicationDto
-                {
-                    Id = a.Id,
-                    AccountId = a.AccountId,
-                    ProductId = a.ProductId,
-                    RequestedAmount = a.RequestedAmount,
-                    Status = a.Status,
-                    ApplicationDate = a.ApplicationDate,
-                    DecisionDate = a.DecisionDate,
-                    Notes = a.Notes,
-                    AccountNumber = a.Account.AccountNumber,
-                    ProductName = a.Product.Name
-                })
+                .ToDtoQuery()
                 .OrderByDescending(a => a.ApplicationDate)
                 .ToListAsync();
 

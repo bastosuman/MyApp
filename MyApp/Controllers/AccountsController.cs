@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyApp.Core.DTOs;
 using MyApp.Core.Entities;
+using MyApp.Core.Mappers;
 using MyApp.Data;
+using MyApp.Data.Mappers;
 using MyApp.Helpers;
 
 namespace MyApp.Controllers;
@@ -28,18 +30,9 @@ public class AccountsController : ControllerBase
     {
         try
         {
-            var accounts = await _context.Accounts
-                .Select(a => new AccountDto
-                {
-                    Id = a.Id,
-                    AccountNumber = a.AccountNumber,
-                    AccountHolderName = a.AccountHolderName,
-                    Balance = a.Balance,
-                    AccountType = a.AccountType,
-                    CreatedDate = a.CreatedDate,
-                    IsActive = a.IsActive
-                })
-                .ToListAsync();
+            var accounts = (await _context.Accounts.ToListAsync())
+                .Select(a => a.ToDto())
+                .ToList();
 
             return Ok(ApiResponse<IEnumerable<AccountDto>>.SuccessResponse(accounts, "Accounts retrieved successfully"));
         }
@@ -58,24 +51,15 @@ public class AccountsController : ControllerBase
     {
         try
         {
-            var account = await _context.Accounts
-                .Where(a => a.Id == id)
-                .Select(a => new AccountDto
-                {
-                    Id = a.Id,
-                    AccountNumber = a.AccountNumber,
-                    AccountHolderName = a.AccountHolderName,
-                    Balance = a.Balance,
-                    AccountType = a.AccountType,
-                    CreatedDate = a.CreatedDate,
-                    IsActive = a.IsActive
-                })
-                .FirstOrDefaultAsync();
-
-            if (account == null)
+            var accountEntity = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Id == id);
+            
+            if (accountEntity == null)
             {
                 return NotFound(ApiResponse<AccountDto>.ErrorResponse($"Account with ID {id} not found"));
             }
+
+            var account = accountEntity.ToDto();
 
             return Ok(ApiResponse<AccountDto>.SuccessResponse(account, "Account retrieved successfully"));
         }
@@ -116,16 +100,7 @@ public class AccountsController : ControllerBase
             _context.Accounts.Add(account);
             await _context.SaveChangesAsync();
 
-            var accountDto = new AccountDto
-            {
-                Id = account.Id,
-                AccountNumber = account.AccountNumber,
-                AccountHolderName = account.AccountHolderName,
-                Balance = account.Balance,
-                AccountType = account.AccountType,
-                CreatedDate = account.CreatedDate,
-                IsActive = account.IsActive
-            };
+            var accountDto = account.ToDto();
 
             return CreatedAtAction(nameof(GetAccount), new { id = account.Id }, 
                 ApiResponse<AccountDto>.SuccessResponse(accountDto, "Account created successfully"));
@@ -161,16 +136,7 @@ public class AccountsController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            var accountDto = new AccountDto
-            {
-                Id = account.Id,
-                AccountNumber = account.AccountNumber,
-                AccountHolderName = account.AccountHolderName,
-                Balance = account.Balance,
-                AccountType = account.AccountType,
-                CreatedDate = account.CreatedDate,
-                IsActive = account.IsActive
-            };
+            var accountDto = account.ToDto();
 
             return Ok(ApiResponse<AccountDto>.SuccessResponse(accountDto, "Account updated successfully"));
         }
@@ -235,20 +201,10 @@ public class AccountsController : ControllerBase
             }
 
             var applications = await _context.Applications
+                .Include(a => a.Account)
+                .Include(a => a.Product)
                 .Where(a => a.AccountId == id)
-                .Select(a => new ApplicationDto
-                {
-                    Id = a.Id,
-                    AccountId = a.AccountId,
-                    ProductId = a.ProductId,
-                    RequestedAmount = a.RequestedAmount,
-                    Status = a.Status,
-                    ApplicationDate = a.ApplicationDate,
-                    DecisionDate = a.DecisionDate,
-                    Notes = a.Notes,
-                    AccountNumber = a.Account.AccountNumber,
-                    ProductName = a.Product.Name
-                })
+                .ToDtoQuery()
                 .OrderByDescending(a => a.ApplicationDate)
                 .ToListAsync();
 
