@@ -44,9 +44,12 @@ jobs:
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           
-          # Set coverage path - file will be created after tests run
-          $coveragePath = "${{ github.workspace }}/coverage.opencover.xml"
-          Write-Host "Starting SonarCloud scan with coverage path: $coveragePath"
+          # Set coverage path - use relative path (SonarCloud prefers relative paths)
+          $coveragePath = "coverage.opencover.xml"
+          Write-Host "Starting SonarCloud scan..."
+          Write-Host "Coverage path (relative): $coveragePath"
+          Write-Host "Coverage path (absolute): ${{ github.workspace }}/$coveragePath"
+          Write-Host "Current directory: $(Get-Location)"
           
           # Coverage exclusions - exclude generated files, migrations, entry point, and frontend
           $coverageExclusions = "**/Migrations/**,**/obj/**,**/bin/**,**/Program.cs,**/BankUI/**"
@@ -58,7 +61,9 @@ jobs:
           $newCodeBaseline = if ($env:GITHUB_BASE_REF) { $env:GITHUB_BASE_REF } else { "main" }
           Write-Host "Using new code baseline: $newCodeBaseline"
           
-          dotnet sonarscanner begin `
+          Write-Host "Running SonarScanner begin command..."
+          # Capture output to see any errors
+          $beginOutput = dotnet sonarscanner begin `
             /k:"bastosuman_MyApp" `
             /o:"bastosuman" `
             /d:sonar.login="$env:SONAR_TOKEN" `
@@ -70,7 +75,27 @@ jobs:
             /d:sonar.sourceEncoding=UTF-8 `
             /d:sonar.sources=. `
             /d:sonar.tests=. `
-            /d:sonar.newCode.referenceBranch="$newCodeBaseline"
+            /d:sonar.newCode.referenceBranch="$newCodeBaseline" `
+            /v:diag 2>&1
+          
+          $beginExitCode = $LASTEXITCODE
+          Write-Host "SonarScanner begin output:"
+          Write-Host $beginOutput
+          Write-Host "SonarScanner begin exited with code: $beginExitCode"
+          
+          if ($beginExitCode -ne 0) {
+            Write-Host "❌ SonarScanner begin failed with exit code $beginExitCode"
+            Write-Host "This will prevent the analysis from completing"
+            Write-Host "Common causes:"
+            Write-Host "  - Invalid SONAR_TOKEN"
+            Write-Host "  - Invalid project key or organization"
+            Write-Host "  - Network connectivity issues"
+            Write-Host "  - SonarCloud service unavailable"
+            exit $beginExitCode
+          } else {
+            Write-Host "✅ SonarScanner begin completed successfully"
+            Write-Host "Analysis session initialized"
+          }
       
       - name: Build solution
         shell: powershell
