@@ -10,7 +10,7 @@ namespace MyApp.Tests.ControllerTests;
 
 public class ApplicationsControllerTests
 {
-    private FinancialDbContext CreateDbContext()
+    private static FinancialDbContext CreateDbContext()
     {
         return TestDbContextFactory.CreateInMemoryDbContext();
     }

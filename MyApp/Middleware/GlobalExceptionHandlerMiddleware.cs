@@ -8,6 +8,10 @@ public class GlobalExceptionHandlerMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionHandlerMiddleware> _logger;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     public GlobalExceptionHandlerMiddleware(RequestDelegate next, ILogger<GlobalExceptionHandlerMiddleware> logger)
     {
@@ -37,12 +41,7 @@ public class GlobalExceptionHandlerMiddleware
             "An internal server error occurred. Please try again later.",
             new List<string> { exception.Message });
 
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        var json = JsonSerializer.Serialize(response, options);
+        var json = JsonSerializer.Serialize(response, JsonOptions);
         return context.Response.WriteAsync(json);
     }
 }

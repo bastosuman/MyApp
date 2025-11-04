@@ -11,7 +11,7 @@ namespace MyApp.Tests.ControllerTests;
 
 public class ProductsControllerTests
 {
-    private FinancialDbContext CreateDbContext()
+    private static FinancialDbContext CreateDbContext()
     {
         return TestDbContextFactory.CreateInMemoryDbContext();
     }
