@@ -27,17 +27,18 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowBankUI",
         policy =>
         {
-            // Allow common development ports
-            policy.WithOrigins(
-                    "http://localhost:3000",
-                    "http://localhost:5173",
-                    "http://localhost:5174",
-                    "http://localhost:5175",
-                    "http://127.0.0.1:3000",
-                    "http://127.0.0.1:5173",
-                    "http://127.0.0.1:5174",
-                    "http://127.0.0.1:5175"
-                )
+            // Build comprehensive list of allowed origins for development
+            var allowedOrigins = new List<string>();
+            
+            // Add common development ports (including 3002 for this setup)
+            var ports = new[] { 3000, 3001, 3002, 3003, 5173, 5174, 5175, 5176, 5177, 5178, 5179, 5180 };
+            foreach (var port in ports)
+            {
+                allowedOrigins.Add($"http://localhost:{port}");
+                allowedOrigins.Add($"http://127.0.0.1:{port}");
+            }
+
+            policy.WithOrigins(allowedOrigins.ToArray())
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -70,7 +71,7 @@ app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseAuthorization();
 
-app.MapControllers().RequireCors("AllowBankUI");
+app.MapControllers();
 
 // Initialize database with seed data (only in development)
 if (app.Environment.IsDevelopment())
