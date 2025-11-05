@@ -12,6 +12,14 @@ public static class DbInitializer
         // Ensure database is created (should already exist from migration)
         context.Database.EnsureCreated();
 
+        // Seed Users first (before checking Products)
+        if (!context.Users.Any())
+        {
+            var users = CreateSeedUsers();
+            context.Users.AddRange(users);
+            context.SaveChanges();
+        }
+
         // Check if database already has data
         if (context.Products.Any())
         {
@@ -195,6 +203,48 @@ public static class DbInitializer
             DecisionDate = decisionDate,
             Notes = notes
         };
+    }
+
+    private static User[] CreateSeedUsers()
+    {
+        var now = DateTime.UtcNow;
+        return new User[]
+        {
+            CreateUser("suman", "siya", "Admin", now)
+        };
+    }
+
+    private static User CreateUser(string username, string password, string role, DateTime createdDate)
+    {
+        // Simple password hashing using BCrypt-style salt (for now, we'll use a simple hash)
+        // In production, use BCrypt.Net-Next package: BCrypt.Net.BCrypt.HashPassword(password)
+        var passwordHash = HashPassword(password);
+        
+        return new User
+        {
+            Username = username,
+            PasswordHash = passwordHash,
+            Role = role,
+            IsActive = true,
+            CreatedDate = createdDate
+        };
+    }
+
+    private static string HashPassword(string password)
+    {
+        // Simple hash for development - in production use BCrypt.Net-Next
+        // For now, using a simple SHA256 hash
+        using (var sha256 = System.Security.Cryptography.SHA256.Create())
+        {
+            var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password + "MyAppSalt2024"));
+            return Convert.ToBase64String(hashedBytes);
+        }
+    }
+
+    public static bool VerifyPassword(string password, string passwordHash)
+    {
+        var computedHash = HashPassword(password);
+        return computedHash == passwordHash;
     }
 }
 

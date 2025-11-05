@@ -14,6 +14,7 @@ public class FinancialDbContext : DbContext
     public DbSet<Transaction> Transactions { get; set; }
     public DbSet<Application> Applications { get; set; }
     public DbSet<Product> Products { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +72,16 @@ public class FinancialDbContext : DbContext
             entity.Property(e => e.MinAmount).HasPrecision(18, 2);
             entity.Property(e => e.MaxAmount).HasPrecision(18, 2);
             entity.Property(e => e.Description).HasMaxLength(1000);
+        });
+
+        // Configure User
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
+            entity.HasIndex(e => e.Username).IsUnique();
         });
     }
 }
