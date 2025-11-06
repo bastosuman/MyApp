@@ -17,6 +17,7 @@ public static class ControllerActionHelper
         string operation,
         string errorMessage,
         Func<Task<ActionResult<ApiResponse<T>>>> action)
+        where T : class
     {
         try
         {
