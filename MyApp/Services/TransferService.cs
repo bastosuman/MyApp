@@ -34,25 +34,21 @@ public class TransferService
             .Include(a => a.Limits)
             .FirstOrDefaultAsync(a => a.Id == sourceAccountId);
 
-        if (sourceAccount == null)
+        var (isValid, errorMessage, validatedSourceAccount) = TransferValidationHelper.ValidateSourceAccount(sourceAccount);
+        if (!isValid)
         {
             result.IsValid = false;
-            result.ErrorMessage = "Source account not found";
+            result.ErrorMessage = errorMessage!;
             return result;
         }
-
-        if (!sourceAccount.IsActive)
-        {
-            result.IsValid = false;
-            result.ErrorMessage = "Source account is not active";
-            return result;
-        }
+        sourceAccount = validatedSourceAccount!;
 
         // Validate amount
-        if (amount <= 0)
+        var (amountValid, amountError) = TransferValidationHelper.ValidateAmount(amount);
+        if (!amountValid)
         {
             result.IsValid = false;
-            result.ErrorMessage = "Transfer amount must be greater than zero";
+            result.ErrorMessage = amountError!;
             return result;
         }
 
@@ -63,59 +59,38 @@ public class TransferService
             destinationAccount = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.Id == destinationAccountId.Value);
 
-            if (destinationAccount == null)
+            var (destValid, destError, validatedDestAccount) = TransferValidationHelper.ValidateInternalDestination(
+                destinationAccount, sourceAccountId, destinationAccountId.Value);
+            if (!destValid)
             {
                 result.IsValid = false;
-                result.ErrorMessage = "Destination account not found";
+                result.ErrorMessage = destError!;
                 return result;
             }
-
-            if (!destinationAccount.IsActive)
-            {
-                result.IsValid = false;
-                result.ErrorMessage = "Destination account is not active";
-                return result;
-            }
-
-            if (sourceAccountId == destinationAccountId.Value)
-            {
-                result.IsValid = false;
-                result.ErrorMessage = "Cannot transfer to the same account";
-                return result;
-            }
+            destinationAccount = validatedDestAccount!;
         }
         else if (transferType == "External" && !string.IsNullOrWhiteSpace(destinationAccountNumber))
         {
             destinationAccount = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.AccountNumber == destinationAccountNumber);
 
-            if (destinationAccount == null)
+            var (destValid, destError, validatedDestAccount) = TransferValidationHelper.ValidateExternalDestination(
+                destinationAccount, sourceAccount.AccountNumber, destinationAccountNumber);
+            if (!destValid)
             {
                 result.IsValid = false;
-                result.ErrorMessage = "Destination account not found";
+                result.ErrorMessage = destError!;
                 return result;
             }
-
-            if (!destinationAccount.IsActive)
-            {
-                result.IsValid = false;
-                result.ErrorMessage = "Destination account is not active";
-                return result;
-            }
-
-            if (sourceAccount.AccountNumber == destinationAccountNumber)
-            {
-                result.IsValid = false;
-                result.ErrorMessage = "Cannot transfer to the same account";
-                return result;
-            }
+            destinationAccount = validatedDestAccount!;
         }
 
         // Check balance
-        if (sourceAccount.Balance < amount)
+        var (balanceValid, balanceError) = TransferValidationHelper.ValidateBalance(sourceAccount, amount);
+        if (!balanceValid)
         {
             result.IsValid = false;
-            result.ErrorMessage = "Insufficient balance for transfer";
+            result.ErrorMessage = balanceError!;
             return result;
         }
 
@@ -181,7 +156,7 @@ public class TransferService
             limits.LastMonthlyReset.Value.Month != DateTime.UtcNow.Month)
         {
             limits.MonthlyTransferUsed = 0;
-            limits.LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+            limits.LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             await _context.SaveChangesAsync();
         }
 
@@ -247,16 +222,19 @@ public class TransferService
         var destinationAccount = validation.DestinationAccount!;
 
         return await TransferExecutionHelper.ExecuteTransferAsync(
-            _context,
             _logger,
-            sourceAccount,
-            destinationAccount,
-            dto.Amount,
-            dto.Description,
-            "Internal",
-            dto.ScheduledDate,
-            null,
-            (src, dest, _) => Task.FromResult(validation));
+            new TransferExecutionParameters
+            {
+                Context = _context,
+                SourceAccount = sourceAccount,
+                DestinationAccount = destinationAccount,
+                Amount = dto.Amount,
+                Description = dto.Description,
+                TransferType = "Internal",
+                ScheduledDate = dto.ScheduledDate,
+                DestinationAccountNumber = null,
+                Validation = validation
+            });
     }
 
     /// <summary>
@@ -297,16 +275,19 @@ public class TransferService
         var sourceAccount = validation.SourceAccount!;
 
         return await TransferExecutionHelper.ExecuteTransferAsync(
-            _context,
             _logger,
-            sourceAccount,
-            destinationAccount,
-            dto.Amount,
-            dto.Description,
-            "External",
-            dto.ScheduledDate,
-            dto.DestinationAccountNumber,
-            (src, dest, _) => Task.FromResult(validation));
+            new TransferExecutionParameters
+            {
+                Context = _context,
+                SourceAccount = sourceAccount,
+                DestinationAccount = destinationAccount,
+                Amount = dto.Amount,
+                Description = dto.Description,
+                TransferType = "External",
+                ScheduledDate = dto.ScheduledDate,
+                DestinationAccountNumber = dto.DestinationAccountNumber,
+                Validation = validation
+            });
     }
 
 

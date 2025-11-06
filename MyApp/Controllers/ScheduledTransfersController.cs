@@ -64,7 +64,7 @@ public class ScheduledTransfersController : ControllerBase
             var scheduledTransfer = new ScheduledTransfer
             {
                 SourceAccountId = dto.SourceAccountId,
-                DestinationAccountId = destinationAccount.Id,
+                DestinationAccountId = destinationAccount!.Id,
                 DestinationAccountNumber = dto.DestinationAccountNumber,
                 TransferType = transferType,
                 Amount = dto.Amount,
@@ -72,7 +72,7 @@ public class ScheduledTransfersController : ControllerBase
                 ScheduledDate = dto.ScheduledDate,
                 RecurrenceType = dto.RecurrenceType,
                 RecurrenceDay = dto.RecurrenceDay,
-                Status = "Active",
+                Status = TransferStatusConstants.Active,
                 NextExecutionDate = nextExecutionDate,
                 CreatedDate = DateTime.UtcNow
             };
@@ -171,7 +171,7 @@ public class ScheduledTransfersController : ControllerBase
                 return ControllerErrorHandler.NotFoundResponse<ScheduledTransferDto>($"Scheduled transfer with ID {id} not found");
             }
 
-            if (scheduledTransfer.Status != "Active" && scheduledTransfer.Status != "Paused")
+            if (scheduledTransfer.Status != TransferStatusConstants.Active && scheduledTransfer.Status != TransferStatusConstants.Paused)
             {
                 return ControllerErrorHandler.BadRequestResponse<ScheduledTransferDto>("Only active or paused scheduled transfers can be updated");
             }
@@ -237,7 +237,7 @@ public class ScheduledTransfersController : ControllerBase
                 return ControllerErrorHandler.NotFoundResponse<object>($"Scheduled transfer with ID {id} not found");
             }
 
-            scheduledTransfer.Status = "Cancelled";
+            scheduledTransfer.Status = TransferStatusConstants.Cancelled;
             await _context.SaveChangesAsync();
 
             return Ok(ApiResponse<object>.SuccessResponse(new { message = "Scheduled transfer cancelled successfully" }));
@@ -264,12 +264,12 @@ public class ScheduledTransfersController : ControllerBase
                 return ControllerErrorHandler.NotFoundResponse<object>($"Scheduled transfer with ID {id} not found");
             }
 
-            if (scheduledTransfer.Status != "Active")
+            if (scheduledTransfer.Status != TransferStatusConstants.Active)
             {
                 return ControllerErrorHandler.BadRequestResponse<object>("Only active scheduled transfers can be paused");
             }
 
-            scheduledTransfer.Status = "Paused";
+            scheduledTransfer.Status = TransferStatusConstants.Paused;
             await _context.SaveChangesAsync();
 
             return Ok(ApiResponse<object>.SuccessResponse(new { message = "Scheduled transfer paused successfully" }));
@@ -296,12 +296,12 @@ public class ScheduledTransfersController : ControllerBase
                 return ControllerErrorHandler.NotFoundResponse<object>($"Scheduled transfer with ID {id} not found");
             }
 
-            if (scheduledTransfer.Status != "Paused")
+            if (scheduledTransfer.Status != TransferStatusConstants.Paused)
             {
                 return ControllerErrorHandler.BadRequestResponse<object>("Only paused scheduled transfers can be resumed");
             }
 
-            scheduledTransfer.Status = "Active";
+            scheduledTransfer.Status = TransferStatusConstants.Active;
             scheduledTransfer.NextExecutionDate = RecurrenceCalculator.CalculateNextExecutionDate(
                 scheduledTransfer.ScheduledDate,
                 scheduledTransfer.RecurrenceType,

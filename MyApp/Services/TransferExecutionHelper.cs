@@ -16,25 +16,17 @@ internal static class TransferExecutionHelper
     /// Executes a transfer with common logic for both internal and external transfers
     /// </summary>
     public static async Task<TransferExecutionResult> ExecuteTransferAsync(
-        FinancialDbContext context,
         ILogger logger,
-        Account sourceAccount,
-        Account destinationAccount,
-        decimal amount,
-        string description,
-        string transferType,
-        DateTime? scheduledDate,
-        string? destinationAccountNumber,
-        Func<Account, Account, TransferValidationResult, Task<TransferValidationResult>> validateTransfer)
+        TransferExecutionParameters parameters)
     {
         // Use database transaction if supported
         IDbContextTransaction? transaction = null;
         try
         {
-            var providerName = context.Database.ProviderName;
+            var providerName = parameters.Context.Database.ProviderName;
             if (providerName != null && !providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
             {
-                transaction = await context.Database.BeginTransactionAsync();
+                transaction = await parameters.Context.Database.BeginTransactionAsync();
             }
         }
         catch
@@ -45,51 +37,50 @@ internal static class TransferExecutionHelper
         try
         {
             // Validate transfer
-            var validation = await validateTransfer(sourceAccount, destinationAccount, new TransferValidationResult { IsValid = true });
-            if (!validation.IsValid)
+            if (!parameters.Validation.IsValid)
             {
                 return new TransferExecutionResult
                 {
                     Success = false,
-                    ErrorMessage = validation.ErrorMessage
+                    ErrorMessage = parameters.Validation.ErrorMessage
                 };
             }
 
-            var transferDate = scheduledDate ?? DateTime.UtcNow;
+            var transferDate = parameters.ScheduledDate ?? DateTime.UtcNow;
 
             // Create transfer record
             var transfer = new Transfer
             {
-                SourceAccountId = sourceAccount.Id,
-                DestinationAccountId = destinationAccount.Id,
-                DestinationAccountNumber = destinationAccountNumber,
-                TransferType = transferType,
-                Amount = amount,
-                Description = description,
+                SourceAccountId = parameters.SourceAccount.Id,
+                DestinationAccountId = parameters.DestinationAccount.Id,
+                DestinationAccountNumber = parameters.DestinationAccountNumber,
+                TransferType = parameters.TransferType,
+                Amount = parameters.Amount,
+                Description = parameters.Description,
                 Status = "Processing",
                 TransferDate = transferDate,
-                ScheduledDate = scheduledDate,
+                ScheduledDate = parameters.ScheduledDate,
                 CreatedDate = DateTime.UtcNow
             };
 
-            context.Transfers.Add(transfer);
-            await context.SaveChangesAsync();
+            parameters.Context.Transfers.Add(transfer);
+            await parameters.Context.SaveChangesAsync();
 
             // Update balances
-            sourceAccount.Balance -= amount;
-            destinationAccount.Balance += amount;
+            parameters.SourceAccount.Balance -= parameters.Amount;
+            parameters.DestinationAccount.Balance += parameters.Amount;
 
             // Create transactions
             var (sourceTransaction, destinationTransaction) = CreateTransferTransactions(
-                sourceAccount,
-                destinationAccount,
-                amount,
-                description,
+                parameters.SourceAccount,
+                parameters.DestinationAccount,
+                parameters.Amount,
+                parameters.Description,
                 transferDate,
-                destinationAccountNumber);
+                parameters.DestinationAccountNumber);
 
-            context.Transactions.AddRange(sourceTransaction, destinationTransaction);
-            await context.SaveChangesAsync();
+            parameters.Context.Transactions.AddRange(sourceTransaction, destinationTransaction);
+            await parameters.Context.SaveChangesAsync();
 
             // Link transactions to transfer
             transfer.SourceTransactionId = sourceTransaction.Id;
@@ -98,9 +89,9 @@ internal static class TransferExecutionHelper
             transfer.CompletedDate = DateTime.UtcNow;
 
             // Update transfer limits
-            await UpdateTransferLimitsAsync(context, sourceAccount.Id, amount);
+            await UpdateTransferLimitsAsync(parameters.Context, parameters.SourceAccount.Id, parameters.Amount);
 
-            await context.SaveChangesAsync();
+            await parameters.Context.SaveChangesAsync();
             if (transaction != null)
             {
                 await transaction.CommitAsync();
@@ -126,7 +117,7 @@ internal static class TransferExecutionHelper
                     // Ignore rollback errors
                 }
             }
-            logger.LogError(ex, "Error executing {TransferType} transfer", transferType);
+            logger.LogError(ex, "Error executing {TransferType} transfer", parameters.TransferType);
             return new TransferExecutionResult
             {
                 Success = false,
@@ -211,7 +202,7 @@ internal static class TransferExecutionHelper
             limits.LastMonthlyReset.Value.Month != DateTime.UtcNow.Month)
         {
             limits.MonthlyTransferUsed = 0;
-            limits.LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+            limits.LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         }
 
         limits.DailyTransferUsed += amount;

@@ -16,7 +16,7 @@ public static class RecurrenceCalculator
         }
 
         var now = DateTime.UtcNow;
-        var nextDate = scheduledDate;
+        var nextDate = scheduledDate.ToUniversalTime();
 
         switch (recurrenceType)
         {
@@ -34,12 +34,12 @@ public static class RecurrenceCalculator
                 if (recurrenceDay.HasValue)
                 {
                     var day = Math.Min(recurrenceDay.Value, DateTime.DaysInMonth(now.Year, now.Month));
-                    nextDate = new DateTime(now.Year, now.Month, day);
+                    nextDate = new DateTime(now.Year, now.Month, day, 0, 0, 0, DateTimeKind.Utc);
                     if (nextDate <= now)
                     {
                         nextDate = nextDate.AddMonths(1);
                         day = Math.Min(recurrenceDay.Value, DateTime.DaysInMonth(nextDate.Year, nextDate.Month));
-                        nextDate = new DateTime(nextDate.Year, nextDate.Month, day);
+                        nextDate = new DateTime(nextDate.Year, nextDate.Month, day, 0, 0, 0, DateTimeKind.Utc);
                     }
                 }
                 else

@@ -8,24 +8,32 @@ namespace MyApp.Data.Migrations
     /// <inheritdoc />
     public partial class AddTransferEntities : Migration
     {
+        private const string TableAccountLimits = "AccountLimits";
+        private const string TableAccounts = "Accounts";
+        private const string TableScheduledTransfers = "ScheduledTransfers";
+        private const string TableTransfers = "Transfers";
+        private const string TypeDecimal = "decimal(18,2)";
+        private const string TypeDateTime2 = "datetime2";
+        private const string TypeNvarchar50 = "nvarchar(50)";
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "AccountLimits",
+                name: TableAccountLimits,
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     AccountId = table.Column<int>(type: "int", nullable: false),
-                    DailyTransferLimit = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    MonthlyTransferLimit = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    PerTransactionMax = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    PerTransactionMin = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    LastDailyReset = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastMonthlyReset = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DailyTransferUsed = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    MonthlyTransferUsed = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    DailyTransferLimit = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
+                    MonthlyTransferLimit = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
+                    PerTransactionMax = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
+                    PerTransactionMin = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
+                    LastDailyReset = table.Column<DateTime>(type: TypeDateTime2, nullable: true),
+                    LastMonthlyReset = table.Column<DateTime>(type: TypeDateTime2, nullable: true),
+                    DailyTransferUsed = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
+                    MonthlyTransferUsed = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
                     AccountId1 = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
@@ -34,36 +42,36 @@ namespace MyApp.Data.Migrations
                     table.ForeignKey(
                         name: "FK_AccountLimits_Accounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_AccountLimits_Accounts_AccountId1",
                         column: x => x.AccountId1,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "ScheduledTransfers",
+                name: TableScheduledTransfers,
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     SourceAccountId = table.Column<int>(type: "int", nullable: false),
                     DestinationAccountId = table.Column<int>(type: "int", nullable: true),
-                    DestinationAccountNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    TransferType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    DestinationAccountNumber = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: true),
+                    TransferType = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    Amount = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    RecurrenceType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    ScheduledDate = table.Column<DateTime>(type: TypeDateTime2, nullable: false),
+                    RecurrenceType = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
                     RecurrenceDay = table.Column<int>(type: "int", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    NextExecutionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastExecutionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    NextExecutionDate = table.Column<DateTime>(type: TypeDateTime2, nullable: true),
+                    LastExecutionDate = table.Column<DateTime>(type: TypeDateTime2, nullable: true),
                     ExecutionCount = table.Column<int>(type: "int", nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedDate = table.Column<DateTime>(type: TypeDateTime2, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -71,38 +79,38 @@ namespace MyApp.Data.Migrations
                     table.ForeignKey(
                         name: "FK_ScheduledTransfers_Accounts_DestinationAccountId",
                         column: x => x.DestinationAccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ScheduledTransfers_Accounts_SourceAccountId",
                         column: x => x.SourceAccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Transfers",
+                name: TableTransfers,
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     SourceAccountId = table.Column<int>(type: "int", nullable: false),
                     DestinationAccountId = table.Column<int>(type: "int", nullable: true),
-                    DestinationAccountNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    TransferType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    DestinationAccountNumber = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: true),
+                    TransferType = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    Amount = table.Column<decimal>(type: TypeDecimal, precision: 18, scale: 2, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    TransferDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: TypeNvarchar50, maxLength: 50, nullable: false),
+                    TransferDate = table.Column<DateTime>(type: TypeDateTime2, nullable: false),
+                    ScheduledDate = table.Column<DateTime>(type: TypeDateTime2, nullable: true),
                     RecurrencePattern = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     SourceTransactionId = table.Column<int>(type: "int", nullable: true),
                     DestinationTransactionId = table.Column<int>(type: "int", nullable: true),
                     FailureReason = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CompletedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    CreatedDate = table.Column<DateTime>(type: TypeDateTime2, nullable: false),
+                    CompletedDate = table.Column<DateTime>(type: TypeDateTime2, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -110,13 +118,13 @@ namespace MyApp.Data.Migrations
                     table.ForeignKey(
                         name: "FK_Transfers_Accounts_DestinationAccountId",
                         column: x => x.DestinationAccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Transfers_Accounts_SourceAccountId",
                         column: x => x.SourceAccountId,
-                        principalTable: "Accounts",
+                        principalTable: TableAccounts,
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -135,7 +143,7 @@ namespace MyApp.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_AccountLimits_AccountId",
-                table: "AccountLimits",
+                table: TableAccountLimits,
                 column: "AccountId",
                 unique: true);
 
@@ -148,32 +156,32 @@ namespace MyApp.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_ScheduledTransfers_DestinationAccountId",
-                table: "ScheduledTransfers",
+                table: TableScheduledTransfers,
                 column: "DestinationAccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ScheduledTransfers_SourceAccountId",
-                table: "ScheduledTransfers",
+                table: TableScheduledTransfers,
                 column: "SourceAccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transfers_DestinationAccountId",
-                table: "Transfers",
+                table: TableTransfers,
                 column: "DestinationAccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transfers_DestinationTransactionId",
-                table: "Transfers",
+                table: TableTransfers,
                 column: "DestinationTransactionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transfers_SourceAccountId",
-                table: "Transfers",
+                table: TableTransfers,
                 column: "SourceAccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transfers_SourceTransactionId",
-                table: "Transfers",
+                table: TableTransfers,
                 column: "SourceTransactionId");
         }
 
@@ -181,13 +189,13 @@ namespace MyApp.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AccountLimits");
+                name: TableAccountLimits);
 
             migrationBuilder.DropTable(
-                name: "ScheduledTransfers");
+                name: TableScheduledTransfers);
 
             migrationBuilder.DropTable(
-                name: "Transfers");
+                name: TableTransfers);
         }
     }
 }
