@@ -37,25 +37,7 @@ public class TransfersController : ControllerBase
             if (validationError != null) return validationError;
 
             var result = await _transferService.ExecuteInternalTransferAsync(dto);
-
-            if (!result.Success)
-            {
-                return ControllerErrorHandler.BadRequestResponse<TransferDto>(result.ErrorMessage);
-            }
-
-            var transfer = await TransferQueryHelper.GetTransferWithIncludes(_context)
-                .FirstOrDefaultAsync(t => t.Id == result.TransferId);
-
-            if (transfer == null)
-            {
-                return ControllerErrorHandler.EntityCreatedButNotFoundResponse<TransferDto>("Transfer");
-            }
-
-            var transferDto = TransferMapper.MapToDto(transfer);
-            return CreatedAtAction(
-                nameof(GetTransfer),
-                new { id = transfer.Id },
-                ApiResponse<TransferDto>.SuccessResponse(transferDto, result.Message));
+            return await TransferCreationHelper.HandleTransferCreationAsync(_context, result, nameof(GetTransfer));
         }
         catch (Exception ex)
         {
@@ -76,25 +58,7 @@ public class TransfersController : ControllerBase
             if (validationError != null) return validationError;
 
             var result = await _transferService.ExecuteExternalTransferAsync(dto);
-
-            if (!result.Success)
-            {
-                return ControllerErrorHandler.BadRequestResponse<TransferDto>(result.ErrorMessage);
-            }
-
-            var transfer = await TransferQueryHelper.GetTransferWithIncludes(_context)
-                .FirstOrDefaultAsync(t => t.Id == result.TransferId);
-
-            if (transfer == null)
-            {
-                return ControllerErrorHandler.EntityCreatedButNotFoundResponse<TransferDto>("Transfer");
-            }
-
-            var transferDto = TransferMapper.MapToDto(transfer);
-            return CreatedAtAction(
-                nameof(GetTransfer),
-                new { id = transfer.Id },
-                ApiResponse<TransferDto>.SuccessResponse(transferDto, result.Message));
+            return await TransferCreationHelper.HandleTransferCreationAsync(_context, result, nameof(GetTransfer));
         }
         catch (Exception ex)
         {

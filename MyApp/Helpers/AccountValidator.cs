@@ -12,6 +12,18 @@ namespace MyApp.Helpers;
 public static class AccountValidator
 {
     /// <summary>
+    /// Validates an account and returns error response if invalid
+    /// </summary>
+    private static ActionResult<ApiResponse<T>>? ValidateAccount<T>(Account? account, string accountType)
+    {
+        if (account == null || !account.IsActive)
+        {
+            return ControllerErrorHandler.BadRequestResponse<T>($"{accountType} account not found or inactive");
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Validates source account and returns error response if invalid
     /// </summary>
     public static async Task<ActionResult<ApiResponse<T>>?> ValidateSourceAccountAsync<T>(
@@ -19,11 +31,7 @@ public static class AccountValidator
         int accountId)
     {
         var account = await context.Accounts.FindAsync(accountId);
-        if (account == null || !account.IsActive)
-        {
-            return ControllerErrorHandler.BadRequestResponse<T>("Source account not found or inactive");
-        }
-        return null;
+        return ValidateAccount<T>(account, "Source");
     }
 
     /// <summary>
@@ -34,11 +42,7 @@ public static class AccountValidator
         int accountId)
     {
         var account = await context.Accounts.FindAsync(accountId);
-        if (account == null || !account.IsActive)
-        {
-            return ControllerErrorHandler.BadRequestResponse<T>("Destination account not found or inactive");
-        }
-        return null;
+        return ValidateAccount<T>(account, "Destination");
     }
 
     /// <summary>
@@ -50,11 +54,8 @@ public static class AccountValidator
     {
         var account = await context.Accounts
             .FirstOrDefaultAsync(a => a.AccountNumber == accountNumber);
-        if (account == null || !account.IsActive)
-        {
-            return (ControllerErrorHandler.BadRequestResponse<T>("Destination account not found or inactive"), null);
-        }
-        return (null, account);
+        var error = ValidateAccount<T>(account, "Destination");
+        return error != null ? (error, null) : (null, account);
     }
 }
 

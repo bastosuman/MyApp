@@ -9,6 +9,17 @@ namespace MyApp.Helpers;
 public static class ControllerErrorHandler
 {
     /// <summary>
+    /// Creates an error response with the specified status code
+    /// </summary>
+    private static ActionResult<ApiResponse<T>> CreateErrorResponse<T>(string errorMessage, int statusCode)
+    {
+        return new ObjectResult(ApiResponse<T>.ErrorResponse(errorMessage))
+        {
+            StatusCode = statusCode
+        };
+    }
+
+    /// <summary>
     /// Handles exceptions and returns a standardized error response
     /// </summary>
     public static ActionResult<ApiResponse<T>> HandleException<T>(
@@ -18,10 +29,7 @@ public static class ControllerErrorHandler
         string errorMessage)
     {
         logger.LogError(ex, "Error {Operation}", operation);
-        return new ObjectResult(ApiResponse<T>.ErrorResponse(errorMessage))
-        {
-            StatusCode = 500
-        };
+        return CreateErrorResponse<T>(errorMessage, 500);
     }
 
     /// <summary>
@@ -29,10 +37,7 @@ public static class ControllerErrorHandler
     /// </summary>
     public static ActionResult<ApiResponse<T>> CreateErrorResponse<T>(string errorMessage)
     {
-        return new ObjectResult(ApiResponse<T>.ErrorResponse(errorMessage))
-        {
-            StatusCode = 500
-        };
+        return CreateErrorResponse<T>(errorMessage, 500);
     }
 
     /// <summary>
