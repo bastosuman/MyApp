@@ -31,34 +31,28 @@ public class ScheduledTransfersController : ControllerBase
             var validationError = ControllerHelpers.ValidateModelState<ScheduledTransferDto>(this);
             if (validationError != null) return validationError;
 
-            // Validate accounts
+            // Validate source account
+            var sourceAccountError = await AccountValidator.ValidateSourceAccountAsync<ScheduledTransferDto>(_context, dto.SourceAccountId);
+            if (sourceAccountError != null) return sourceAccountError;
             var sourceAccount = await _context.Accounts.FindAsync(dto.SourceAccountId);
-            if (sourceAccount == null || !sourceAccount.IsActive)
-            {
-                return BadRequest(ApiResponse<ScheduledTransferDto>.ErrorResponse("Source account not found or inactive"));
-            }
 
+            // Validate destination account
             Account? destinationAccount = null;
             if (dto.DestinationAccountId.HasValue)
             {
+                var destError = await AccountValidator.ValidateDestinationAccountByIdAsync<ScheduledTransferDto>(_context, dto.DestinationAccountId.Value);
+                if (destError != null) return destError;
                 destinationAccount = await _context.Accounts.FindAsync(dto.DestinationAccountId.Value);
-                if (destinationAccount == null || !destinationAccount.IsActive)
-                {
-                    return BadRequest(ApiResponse<ScheduledTransferDto>.ErrorResponse("Destination account not found or inactive"));
-                }
             }
             else if (!string.IsNullOrWhiteSpace(dto.DestinationAccountNumber))
             {
-                destinationAccount = await _context.Accounts
-                    .FirstOrDefaultAsync(a => a.AccountNumber == dto.DestinationAccountNumber);
-                if (destinationAccount == null || !destinationAccount.IsActive)
-                {
-                    return BadRequest(ApiResponse<ScheduledTransferDto>.ErrorResponse("Destination account not found or inactive"));
-                }
+                var (destError, destAccount) = await AccountValidator.ValidateDestinationAccountByNumberAsync<ScheduledTransferDto>(_context, dto.DestinationAccountNumber);
+                if (destError != null) return destError;
+                destinationAccount = destAccount;
             }
             else
             {
-                return BadRequest(ApiResponse<ScheduledTransferDto>.ErrorResponse("Either DestinationAccountId or DestinationAccountNumber must be provided"));
+                return ControllerErrorHandler.BadRequestResponse<ScheduledTransferDto>("Either DestinationAccountId or DestinationAccountNumber must be provided");
             }
 
             // Determine transfer type
@@ -109,10 +103,7 @@ public class ScheduledTransfersController : ControllerBase
     {
         try
         {
-            var query = _context.ScheduledTransfers
-                .Include(s => s.SourceAccount)
-                .Include(s => s.DestinationAccount)
-                .AsQueryable();
+            var query = TransferQueryHelper.GetScheduledTransferWithIncludes(_context).AsQueryable();
 
             if (accountId.HasValue)
             {
@@ -146,14 +137,12 @@ public class ScheduledTransfersController : ControllerBase
     {
         try
         {
-            var scheduledTransfer = await _context.ScheduledTransfers
-                .Include(s => s.SourceAccount)
-                .Include(s => s.DestinationAccount)
+            var scheduledTransfer = await TransferQueryHelper.GetScheduledTransferWithIncludes(_context)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (scheduledTransfer == null)
             {
-                return NotFound(ApiResponse<ScheduledTransferDto>.ErrorResponse($"Scheduled transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<ScheduledTransferDto>($"Scheduled transfer with ID {id} not found");
             }
 
             var dto = TransferMapper.MapToDto(scheduledTransfer);
@@ -179,12 +168,12 @@ public class ScheduledTransfersController : ControllerBase
 
             if (scheduledTransfer == null)
             {
-                return NotFound(ApiResponse<ScheduledTransferDto>.ErrorResponse($"Scheduled transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<ScheduledTransferDto>($"Scheduled transfer with ID {id} not found");
             }
 
             if (scheduledTransfer.Status != "Active" && scheduledTransfer.Status != "Paused")
             {
-                return BadRequest(ApiResponse<ScheduledTransferDto>.ErrorResponse("Only active or paused scheduled transfers can be updated"));
+                return ControllerErrorHandler.BadRequestResponse<ScheduledTransferDto>("Only active or paused scheduled transfers can be updated");
             }
 
             if (dto.Amount.HasValue)
@@ -220,9 +209,7 @@ public class ScheduledTransfersController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            var updatedTransfer = await _context.ScheduledTransfers
-                .Include(s => s.SourceAccount)
-                .Include(s => s.DestinationAccount)
+            var updatedTransfer = await TransferQueryHelper.GetScheduledTransferWithIncludes(_context)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             var transferDto = TransferMapper.MapToDto(updatedTransfer!);
@@ -247,7 +234,7 @@ public class ScheduledTransfersController : ControllerBase
 
             if (scheduledTransfer == null)
             {
-                return NotFound(ApiResponse<object>.ErrorResponse($"Scheduled transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<object>($"Scheduled transfer with ID {id} not found");
             }
 
             scheduledTransfer.Status = "Cancelled";
@@ -274,12 +261,12 @@ public class ScheduledTransfersController : ControllerBase
 
             if (scheduledTransfer == null)
             {
-                return NotFound(ApiResponse<object>.ErrorResponse($"Scheduled transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<object>($"Scheduled transfer with ID {id} not found");
             }
 
             if (scheduledTransfer.Status != "Active")
             {
-                return BadRequest(ApiResponse<object>.ErrorResponse("Only active scheduled transfers can be paused"));
+                return ControllerErrorHandler.BadRequestResponse<object>("Only active scheduled transfers can be paused");
             }
 
             scheduledTransfer.Status = "Paused";
@@ -306,12 +293,12 @@ public class ScheduledTransfersController : ControllerBase
 
             if (scheduledTransfer == null)
             {
-                return NotFound(ApiResponse<object>.ErrorResponse($"Scheduled transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<object>($"Scheduled transfer with ID {id} not found");
             }
 
             if (scheduledTransfer.Status != "Paused")
             {
-                return BadRequest(ApiResponse<object>.ErrorResponse("Only paused scheduled transfers can be resumed"));
+                return ControllerErrorHandler.BadRequestResponse<object>("Only paused scheduled transfers can be resumed");
             }
 
             scheduledTransfer.Status = "Active";

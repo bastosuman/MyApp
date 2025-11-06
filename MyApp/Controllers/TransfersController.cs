@@ -40,17 +40,15 @@ public class TransfersController : ControllerBase
 
             if (!result.Success)
             {
-                return BadRequest(ApiResponse<TransferDto>.ErrorResponse(result.ErrorMessage));
+                return ControllerErrorHandler.BadRequestResponse<TransferDto>(result.ErrorMessage);
             }
 
-            var transfer = await _context.Transfers
-                .Include(t => t.SourceAccount)
-                .Include(t => t.DestinationAccount)
+            var transfer = await TransferQueryHelper.GetTransferWithIncludes(_context)
                 .FirstOrDefaultAsync(t => t.Id == result.TransferId);
 
             if (transfer == null)
             {
-                return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("Transfer created but could not be retrieved"));
+                return ControllerErrorHandler.EntityCreatedButNotFoundResponse<TransferDto>("Transfer");
             }
 
             var transferDto = TransferMapper.MapToDto(transfer);
@@ -81,17 +79,15 @@ public class TransfersController : ControllerBase
 
             if (!result.Success)
             {
-                return BadRequest(ApiResponse<TransferDto>.ErrorResponse(result.ErrorMessage));
+                return ControllerErrorHandler.BadRequestResponse<TransferDto>(result.ErrorMessage);
             }
 
-            var transfer = await _context.Transfers
-                .Include(t => t.SourceAccount)
-                .Include(t => t.DestinationAccount)
+            var transfer = await TransferQueryHelper.GetTransferWithIncludes(_context)
                 .FirstOrDefaultAsync(t => t.Id == result.TransferId);
 
             if (transfer == null)
             {
-                return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("Transfer created but could not be retrieved"));
+                return ControllerErrorHandler.EntityCreatedButNotFoundResponse<TransferDto>("Transfer");
             }
 
             var transferDto = TransferMapper.MapToDto(transfer);
@@ -118,10 +114,7 @@ public class TransfersController : ControllerBase
     {
         try
         {
-            var query = _context.Transfers
-                .Include(t => t.SourceAccount)
-                .Include(t => t.DestinationAccount)
-                .AsQueryable();
+            var query = TransferQueryHelper.GetTransferWithIncludes(_context).AsQueryable();
 
             if (accountId.HasValue)
             {
@@ -169,7 +162,7 @@ public class TransfersController : ControllerBase
 
             if (transfer == null)
             {
-                return NotFound(ApiResponse<TransferDto>.ErrorResponse($"Transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<TransferDto>($"Transfer with ID {id} not found");
             }
 
             var transferDto = TransferMapper.MapToDto(transfer);
@@ -190,9 +183,7 @@ public class TransfersController : ControllerBase
     {
         try
         {
-            var transfers = await _context.Transfers
-                .Include(t => t.SourceAccount)
-                .Include(t => t.DestinationAccount)
+            var transfers = await TransferQueryHelper.GetTransferWithIncludes(_context)
                 .Where(t => t.SourceAccountId == accountId || 
                            (t.DestinationAccountId.HasValue && t.DestinationAccountId == accountId))
                 .OrderByDescending(t => t.TransferDate)
@@ -221,7 +212,7 @@ public class TransfersController : ControllerBase
 
             if (!cancelled)
             {
-                return BadRequest(ApiResponse<object>.ErrorResponse("Transfer cannot be cancelled. It may not exist or is not in a cancellable state."));
+                return ControllerErrorHandler.BadRequestResponse<object>("Transfer cannot be cancelled. It may not exist or is not in a cancellable state.");
             }
 
             return Ok(ApiResponse<object>.SuccessResponse(new { message = "Transfer cancelled successfully" }));
@@ -241,63 +232,38 @@ public class TransfersController : ControllerBase
     {
         try
         {
-            var transfer = await _context.Transfers
-                .Include(t => t.SourceAccount)
-                .Include(t => t.DestinationAccount)
+            var transfer = await TransferQueryHelper.GetTransferWithIncludes(_context)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (transfer == null)
             {
-                return NotFound(ApiResponse<TransferDto>.ErrorResponse($"Transfer with ID {id} not found"));
+                return ControllerErrorHandler.NotFoundResponse<TransferDto>($"Transfer with ID {id} not found");
             }
 
             if (transfer.Status != "Failed")
             {
-                return BadRequest(ApiResponse<TransferDto>.ErrorResponse("Only failed transfers can be retried"));
+                return ControllerErrorHandler.BadRequestResponse<TransferDto>("Only failed transfers can be retried");
             }
 
             // Retry logic - execute the transfer again
-            TransferExecutionResult result;
-            if (transfer.TransferType == "Internal" && transfer.DestinationAccountId.HasValue)
+            var result = await TransferRetryHelper.RetryTransferAsync(transfer, _transferService);
+            
+            if (!result.Success && result.ErrorMessage == "Invalid transfer type for retry")
             {
-                var dto = new CreateInternalTransferDto
-                {
-                    SourceAccountId = transfer.SourceAccountId,
-                    DestinationAccountId = transfer.DestinationAccountId.Value,
-                    Amount = transfer.Amount,
-                    Description = transfer.Description
-                };
-                result = await _transferService.ExecuteInternalTransferAsync(dto);
-            }
-            else if (transfer.TransferType == "External" && !string.IsNullOrWhiteSpace(transfer.DestinationAccountNumber))
-            {
-                var dto = new CreateExternalTransferDto
-                {
-                    SourceAccountId = transfer.SourceAccountId,
-                    DestinationAccountNumber = transfer.DestinationAccountNumber,
-                    Amount = transfer.Amount,
-                    Description = transfer.Description
-                };
-                result = await _transferService.ExecuteExternalTransferAsync(dto);
-            }
-            else
-            {
-                return BadRequest(ApiResponse<TransferDto>.ErrorResponse("Invalid transfer type for retry"));
+                return ControllerErrorHandler.BadRequestResponse<TransferDto>(result.ErrorMessage);
             }
 
             if (!result.Success)
             {
-                return BadRequest(ApiResponse<TransferDto>.ErrorResponse(result.ErrorMessage));
+                return ControllerErrorHandler.BadRequestResponse<TransferDto>(result.ErrorMessage);
             }
 
-            var retriedTransfer = await _context.Transfers
-                .Include(t => t.SourceAccount)
-                .Include(t => t.DestinationAccount)
+            var retriedTransfer = await TransferQueryHelper.GetTransferWithIncludes(_context)
                 .FirstOrDefaultAsync(t => t.Id == result.TransferId);
 
             if (retriedTransfer == null)
             {
-                return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("Transfer retried but could not be retrieved"));
+                return ControllerErrorHandler.EntityCreatedButNotFoundResponse<TransferDto>("Transfer");
             }
 
             var transferDto = TransferMapper.MapToDto(retriedTransfer);

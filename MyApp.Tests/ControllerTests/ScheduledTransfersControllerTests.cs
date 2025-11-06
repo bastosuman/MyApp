@@ -649,5 +649,81 @@ public class ScheduledTransfersControllerTests
         var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
         Assert.False(response.Success);
     }
+
+    [Fact]
+    public async Task CreateScheduledTransfer_ShouldReturnBadRequest_WhenNeitherDestinationIdNorNumberProvided()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var logger = CreateLogger();
+        var controller = new ScheduledTransfersController(context, logger);
+
+        var sourceAccount = TestDataFactory.CreateTestAccount("ACC001", "John Doe", 10000m, isActive: true);
+        context.Accounts.Add(sourceAccount);
+        await context.SaveChangesAsync();
+
+        var dto = new CreateScheduledTransferDto
+        {
+            SourceAccountId = sourceAccount.Id,
+            Amount = 1000m,
+            ScheduledDate = DateTime.UtcNow.AddDays(1),
+            RecurrenceType = "OneTime"
+            // No destination account ID or number
+        };
+
+        // Act
+        var result = await controller.CreateScheduledTransfer(dto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<ScheduledTransferDto>>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Contains("DestinationAccountId or DestinationAccountNumber", response.Message);
+    }
+
+    [Fact]
+    public async Task UpdateScheduledTransfer_ShouldRecalculateNextExecutionDate()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var logger = CreateLogger();
+        var controller = new ScheduledTransfersController(context, logger);
+
+        var account1 = TestDataFactory.CreateTestAccount("ACC001", "John Doe", 10000m, isActive: true);
+        var account2 = TestDataFactory.CreateTestAccount("ACC002", "Jane Smith", 5000m, isActive: true);
+        context.Accounts.AddRange(account1, account2);
+        await context.SaveChangesAsync();
+
+        var scheduled = new ScheduledTransfer
+        {
+            SourceAccountId = account1.Id,
+            DestinationAccountId = account2.Id,
+            TransferType = "Internal",
+            Amount = 1000m,
+            ScheduledDate = DateTime.UtcNow.AddDays(1),
+            RecurrenceType = "Monthly",
+            RecurrenceDay = 15,
+            Status = "Active",
+            CreatedDate = DateTime.UtcNow
+        };
+        context.ScheduledTransfers.Add(scheduled);
+        await context.SaveChangesAsync();
+
+        var updateDto = new UpdateScheduledTransferDto
+        {
+            RecurrenceType = "Weekly"
+        };
+
+        // Act
+        var result = await controller.UpdateScheduledTransfer(scheduled.Id, updateDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<ScheduledTransferDto>>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal("Weekly", response.Data.RecurrenceType);
+        Assert.NotNull(response.Data.NextExecutionDate);
+    }
 }
 

@@ -34,5 +34,29 @@ public static class ControllerErrorHandler
             StatusCode = 500
         };
     }
+
+    /// <summary>
+    /// Creates a BadRequest response with error message
+    /// </summary>
+    public static ActionResult<ApiResponse<T>> BadRequestResponse<T>(string errorMessage)
+    {
+        return new BadRequestObjectResult(ApiResponse<T>.ErrorResponse(errorMessage));
+    }
+
+    /// <summary>
+    /// Creates a NotFound response with error message
+    /// </summary>
+    public static ActionResult<ApiResponse<T>> NotFoundResponse<T>(string errorMessage)
+    {
+        return new NotFoundObjectResult(ApiResponse<T>.ErrorResponse(errorMessage));
+    }
+
+    /// <summary>
+    /// Creates a 500 response for entity created but not found scenario
+    /// </summary>
+    public static ActionResult<ApiResponse<T>> EntityCreatedButNotFoundResponse<T>(string entityName)
+    {
+        return CreateErrorResponse<T>($"{entityName} created but could not be retrieved");
+    }
 }
 
