@@ -13,5 +13,6 @@ public class Account
     // Navigation properties
     public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
+    public virtual AccountLimits? Limits { get; set; }
 }
 

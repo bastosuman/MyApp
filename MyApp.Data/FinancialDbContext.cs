@@ -15,6 +15,9 @@ public class FinancialDbContext : DbContext
     public DbSet<Application> Applications { get; set; }
     public DbSet<Product> Products { get; set; }
     public DbSet<User> Users { get; set; }
+    public DbSet<Transfer> Transfers { get; set; }
+    public DbSet<AccountLimits> AccountLimits { get; set; }
+    public DbSet<ScheduledTransfer> ScheduledTransfers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +85,72 @@ public class FinancialDbContext : DbContext
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(500);
             entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
             entity.HasIndex(e => e.Username).IsUnique();
+        });
+
+        // Configure Transfer
+        modelBuilder.Entity<Transfer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TransferType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DestinationAccountNumber).HasMaxLength(50);
+            entity.Property(e => e.FailureReason).HasMaxLength(1000);
+            entity.Property(e => e.RecurrencePattern).HasMaxLength(200);
+            entity.HasOne(e => e.SourceAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.SourceAccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.DestinationAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.DestinationAccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SourceTransaction)
+                  .WithMany()
+                  .HasForeignKey(e => e.SourceTransactionId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.DestinationTransaction)
+                  .WithMany()
+                  .HasForeignKey(e => e.DestinationTransactionId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure AccountLimits
+        modelBuilder.Entity<AccountLimits>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DailyTransferLimit).HasPrecision(18, 2);
+            entity.Property(e => e.MonthlyTransferLimit).HasPrecision(18, 2);
+            entity.Property(e => e.PerTransactionMax).HasPrecision(18, 2);
+            entity.Property(e => e.PerTransactionMin).HasPrecision(18, 2);
+            entity.Property(e => e.DailyTransferUsed).HasPrecision(18, 2);
+            entity.Property(e => e.MonthlyTransferUsed).HasPrecision(18, 2);
+            entity.HasOne(e => e.Account)
+                  .WithOne()
+                  .HasForeignKey<AccountLimits>(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.AccountId).IsUnique();
+        });
+
+        // Configure ScheduledTransfer
+        modelBuilder.Entity<ScheduledTransfer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TransferType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.RecurrenceType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DestinationAccountNumber).HasMaxLength(50);
+            entity.HasOne(e => e.SourceAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.SourceAccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.DestinationAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.DestinationAccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

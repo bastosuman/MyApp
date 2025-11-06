@@ -21,6 +21,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<FinancialDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+// Register services
+builder.Services.AddScoped<MyApp.Services.TransferService>();
+
 // Add CORS to allow BankUI frontend to connect
 builder.Services.AddCors(options =>
 {
