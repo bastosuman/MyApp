@@ -6,6 +6,8 @@ import { Transactions } from './components/Transactions';
 import { Applications } from './components/Applications';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
+import { Transfers } from './components/Transfers';
+import { ScheduledTransfers } from './components/ScheduledTransfers';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authService } from './services/auth.service';
 
@@ -63,6 +65,18 @@ function Layout({ children }: { children: React.ReactNode }) {
             className={`nav-link ${isActive('/applications') ? 'active' : ''}`}
           >
             Applications
+          </Link>
+          <Link
+            to="/transfers"
+            className={`nav-link ${isActive('/transfers') ? 'active' : ''}`}
+          >
+            Transfers
+          </Link>
+          <Link
+            to="/scheduled-transfers"
+            className={`nav-link ${isActive('/scheduled-transfers') ? 'active' : ''}`}
+          >
+            Scheduled
           </Link>
         </nav>
       </header>
@@ -124,6 +138,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Applications />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transfers"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Transfers />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/scheduled-transfers"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ScheduledTransfers />
             </Layout>
           </ProtectedRoute>
         }

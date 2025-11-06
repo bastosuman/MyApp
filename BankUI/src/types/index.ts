@@ -94,3 +94,75 @@ export interface UpdateApplicationStatus {
   notes?: string;
 }
 
+// Transfer types
+export interface Transfer {
+  id: number;
+  sourceAccountId: number;
+  sourceAccountNumber: string;
+  destinationAccountId?: number;
+  destinationAccountNumber?: string;
+  transferType: string;
+  amount: number;
+  description: string;
+  status: string;
+  transferDate: string;
+  scheduledDate?: string;
+  completedDate?: string;
+  failureReason?: string;
+}
+
+export interface CreateInternalTransfer {
+  sourceAccountId: number;
+  destinationAccountId: number;
+  amount: number;
+  description: string;
+  scheduledDate?: string;
+}
+
+export interface CreateExternalTransfer {
+  sourceAccountId: number;
+  destinationAccountNumber: string;
+  amount: number;
+  description: string;
+  scheduledDate?: string;
+}
+
+// Scheduled Transfer types
+export interface ScheduledTransfer {
+  id: number;
+  sourceAccountId: number;
+  sourceAccountNumber: string;
+  destinationAccountId?: number;
+  destinationAccountNumber?: string;
+  transferType: string;
+  amount: number;
+  description: string;
+  scheduledDate: string;
+  recurrenceType: string;
+  recurrenceDay?: number;
+  status: string;
+  nextExecutionDate?: string;
+  lastExecutionDate?: string;
+  executionCount: number;
+  createdDate: string;
+}
+
+export interface CreateScheduledTransfer {
+  sourceAccountId: number;
+  destinationAccountId?: number;
+  destinationAccountNumber?: string;
+  amount: number;
+  description: string;
+  scheduledDate: string;
+  recurrenceType: string;
+  recurrenceDay?: number;
+}
+
+export interface UpdateScheduledTransfer {
+  amount?: number;
+  description?: string;
+  scheduledDate?: string;
+  recurrenceType?: string;
+  recurrenceDay?: number;
+}
+

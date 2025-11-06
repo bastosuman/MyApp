@@ -15,6 +15,7 @@ public static class TestDbContextFactory
     {
         var options = new DbContextOptionsBuilder<FinancialDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         return new FinancialDbContext(options);
