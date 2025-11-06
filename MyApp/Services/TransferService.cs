@@ -226,144 +226,37 @@ public class TransferService
     /// </summary>
     public async Task<TransferExecutionResult> ExecuteInternalTransferAsync(CreateInternalTransferDto dto)
     {
-        // Use database transaction if supported, otherwise rely on SaveChanges atomicity
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-        try
+        // Validate transfer
+        var validation = await ValidateTransferAsync(
+            dto.SourceAccountId,
+            dto.DestinationAccountId,
+            null,
+            dto.Amount,
+            "Internal");
+
+        if (!validation.IsValid)
         {
-            var providerName = _context.Database.ProviderName;
-            if (providerName != null && !providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
-            {
-                transaction = await _context.Database.BeginTransactionAsync();
-            }
-        }
-        catch
-        {
-            // In-memory database doesn't support transactions, continue without
-        }
-        try
-        {
-            // Validate transfer
-            var validation = await ValidateTransferAsync(
-                dto.SourceAccountId,
-                dto.DestinationAccountId,
-                null,
-                dto.Amount,
-                "Internal");
-
-            if (!validation.IsValid)
-            {
-                return new TransferExecutionResult
-                {
-                    Success = false,
-                    ErrorMessage = validation.ErrorMessage
-                };
-            }
-
-            var sourceAccount = validation.SourceAccount!;
-            var destinationAccount = validation.DestinationAccount!;
-
-            // Create transfer record
-            var transfer = new Transfer
-            {
-                SourceAccountId = dto.SourceAccountId,
-                DestinationAccountId = dto.DestinationAccountId,
-                TransferType = "Internal",
-                Amount = dto.Amount,
-                Description = dto.Description,
-                Status = "Processing",
-                TransferDate = dto.ScheduledDate ?? DateTime.UtcNow,
-                ScheduledDate = dto.ScheduledDate,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            _context.Transfers.Add(transfer);
-            await _context.SaveChangesAsync();
-
-            // Update balances
-            sourceAccount.Balance -= dto.Amount;
-            destinationAccount.Balance += dto.Amount;
-
-            // Create source transaction
-            var sourceTransaction = new Transaction
-            {
-                AccountId = sourceAccount.Id,
-                TransactionType = "Transfer Out",
-                Amount = dto.Amount,
-                Description = $"Transfer to {destinationAccount.AccountNumber}: {dto.Description}",
-                TransactionDate = transfer.TransferDate,
-                Status = "Completed"
-            };
-
-            // Create destination transaction
-            var destinationTransaction = new Transaction
-            {
-                AccountId = destinationAccount.Id,
-                TransactionType = "Transfer In",
-                Amount = dto.Amount,
-                Description = $"Transfer from {sourceAccount.AccountNumber}: {dto.Description}",
-                TransactionDate = transfer.TransferDate,
-                Status = "Completed"
-            };
-
-            _context.Transactions.AddRange(sourceTransaction, destinationTransaction);
-            await _context.SaveChangesAsync();
-
-            // Link transactions to transfer
-            transfer.SourceTransactionId = sourceTransaction.Id;
-            transfer.DestinationTransactionId = destinationTransaction.Id;
-            transfer.Status = "Completed";
-            transfer.CompletedDate = DateTime.UtcNow;
-
-            // Update transfer limits
-            await UpdateTransferLimitsAsync(sourceAccount.Id, dto.Amount);
-
-            await _context.SaveChangesAsync();
-            if (transaction != null)
-            {
-                await transaction.CommitAsync();
-            }
-
-            return new TransferExecutionResult
-            {
-                Success = true,
-                TransferId = transfer.Id,
-                Message = "Transfer completed successfully"
-            };
-        }
-        catch (Exception ex)
-        {
-            if (transaction != null)
-            {
-                try
-                {
-                    await transaction.RollbackAsync();
-                }
-                catch
-                {
-                    // Ignore rollback errors
-                }
-            }
-            _logger.LogError(ex, "Error executing internal transfer");
             return new TransferExecutionResult
             {
                 Success = false,
-                ErrorMessage = "An error occurred while processing the transfer"
+                ErrorMessage = validation.ErrorMessage
             };
         }
-        finally
-        {
-            if (transaction != null)
-            {
-                try
-                {
-                    await transaction.DisposeAsync();
-                }
-                catch
-                {
-                    // Ignore dispose errors
-                }
-            }
-        }
+
+        var sourceAccount = validation.SourceAccount!;
+        var destinationAccount = validation.DestinationAccount!;
+
+        return await TransferExecutionHelper.ExecuteTransferAsync(
+            _context,
+            _logger,
+            sourceAccount,
+            destinationAccount,
+            dto.Amount,
+            dto.Description,
+            "Internal",
+            dto.ScheduledDate,
+            null,
+            (src, dest, _) => Task.FromResult(validation));
     }
 
     /// <summary>
@@ -371,193 +264,51 @@ public class TransferService
     /// </summary>
     public async Task<TransferExecutionResult> ExecuteExternalTransferAsync(CreateExternalTransferDto dto)
     {
-        // Use database transaction if supported, otherwise rely on SaveChanges atomicity
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-        try
+        // Find destination account by account number
+        var destinationAccount = await _context.Accounts
+            .FirstOrDefaultAsync(a => a.AccountNumber == dto.DestinationAccountNumber);
+
+        if (destinationAccount == null)
         {
-            var providerName = _context.Database.ProviderName;
-            if (providerName != null && !providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
-            {
-                transaction = await _context.Database.BeginTransactionAsync();
-            }
-        }
-        catch
-        {
-            // In-memory database doesn't support transactions, continue without
-        }
-        try
-        {
-            // Find destination account by account number
-            var destinationAccount = await _context.Accounts
-                .FirstOrDefaultAsync(a => a.AccountNumber == dto.DestinationAccountNumber);
-
-            if (destinationAccount == null)
-            {
-                return new TransferExecutionResult
-                {
-                    Success = false,
-                    ErrorMessage = "Destination account not found"
-                };
-            }
-
-            // Validate transfer
-            var validation = await ValidateTransferAsync(
-                dto.SourceAccountId,
-                destinationAccount.Id,
-                dto.DestinationAccountNumber,
-                dto.Amount,
-                "External");
-
-            if (!validation.IsValid)
-            {
-                return new TransferExecutionResult
-                {
-                    Success = false,
-                    ErrorMessage = validation.ErrorMessage
-                };
-            }
-
-            var sourceAccount = validation.SourceAccount!;
-
-            // Create transfer record
-            var transfer = new Transfer
-            {
-                SourceAccountId = dto.SourceAccountId,
-                DestinationAccountId = destinationAccount.Id,
-                DestinationAccountNumber = dto.DestinationAccountNumber,
-                TransferType = "External",
-                Amount = dto.Amount,
-                Description = dto.Description,
-                Status = "Processing",
-                TransferDate = dto.ScheduledDate ?? DateTime.UtcNow,
-                ScheduledDate = dto.ScheduledDate,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            _context.Transfers.Add(transfer);
-            await _context.SaveChangesAsync();
-
-            // Update balances
-            sourceAccount.Balance -= dto.Amount;
-            destinationAccount.Balance += dto.Amount;
-
-            // Create source transaction
-            var sourceTransaction = new Transaction
-            {
-                AccountId = sourceAccount.Id,
-                TransactionType = "Transfer Out",
-                Amount = dto.Amount,
-                Description = $"Transfer to {dto.DestinationAccountNumber}: {dto.Description}",
-                TransactionDate = transfer.TransferDate,
-                Status = "Completed"
-            };
-
-            // Create destination transaction
-            var destinationTransaction = new Transaction
-            {
-                AccountId = destinationAccount.Id,
-                TransactionType = "Transfer In",
-                Amount = dto.Amount,
-                Description = $"Transfer from {sourceAccount.AccountNumber}: {dto.Description}",
-                TransactionDate = transfer.TransferDate,
-                Status = "Completed"
-            };
-
-            _context.Transactions.AddRange(sourceTransaction, destinationTransaction);
-            await _context.SaveChangesAsync();
-
-            // Link transactions to transfer
-            transfer.SourceTransactionId = sourceTransaction.Id;
-            transfer.DestinationTransactionId = destinationTransaction.Id;
-            transfer.Status = "Completed";
-            transfer.CompletedDate = DateTime.UtcNow;
-
-            // Update transfer limits
-            await UpdateTransferLimitsAsync(sourceAccount.Id, dto.Amount);
-
-            await _context.SaveChangesAsync();
-            if (transaction != null)
-            {
-                await transaction.CommitAsync();
-            }
-
-            return new TransferExecutionResult
-            {
-                Success = true,
-                TransferId = transfer.Id,
-                Message = "Transfer completed successfully"
-            };
-        }
-        catch (Exception ex)
-        {
-            if (transaction != null)
-            {
-                try
-                {
-                    await transaction.RollbackAsync();
-                }
-                catch
-                {
-                    // Ignore rollback errors
-                }
-            }
-            _logger.LogError(ex, "Error executing external transfer");
             return new TransferExecutionResult
             {
                 Success = false,
-                ErrorMessage = "An error occurred while processing the transfer"
+                ErrorMessage = "Destination account not found"
             };
         }
-        finally
+
+        // Validate transfer
+        var validation = await ValidateTransferAsync(
+            dto.SourceAccountId,
+            destinationAccount.Id,
+            dto.DestinationAccountNumber,
+            dto.Amount,
+            "External");
+
+        if (!validation.IsValid)
         {
-            if (transaction != null)
+            return new TransferExecutionResult
             {
-                try
-                {
-                    await transaction.DisposeAsync();
-                }
-                catch
-                {
-                    // Ignore dispose errors
-                }
-            }
+                Success = false,
+                ErrorMessage = validation.ErrorMessage
+            };
         }
+
+        var sourceAccount = validation.SourceAccount!;
+
+        return await TransferExecutionHelper.ExecuteTransferAsync(
+            _context,
+            _logger,
+            sourceAccount,
+            destinationAccount,
+            dto.Amount,
+            dto.Description,
+            "External",
+            dto.ScheduledDate,
+            dto.DestinationAccountNumber,
+            (src, dest, _) => Task.FromResult(validation));
     }
 
-    /// <summary>
-    /// Updates transfer limits after a successful transfer
-    /// </summary>
-    private async Task UpdateTransferLimitsAsync(int accountId, decimal amount)
-    {
-        var account = await _context.Accounts
-            .Include(a => a.Limits)
-            .FirstOrDefaultAsync(a => a.Id == accountId);
-
-        if (account?.Limits == null) return;
-
-        var limits = account.Limits;
-
-        // Reset daily limit if needed
-        if (limits.LastDailyReset == null || limits.LastDailyReset.Value.Date < DateTime.UtcNow.Date)
-        {
-            limits.DailyTransferUsed = 0;
-            limits.LastDailyReset = DateTime.UtcNow.Date;
-        }
-
-        // Reset monthly limit if needed
-        if (limits.LastMonthlyReset == null ||
-            limits.LastMonthlyReset.Value.Year != DateTime.UtcNow.Year ||
-            limits.LastMonthlyReset.Value.Month != DateTime.UtcNow.Month)
-        {
-            limits.MonthlyTransferUsed = 0;
-            limits.LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        }
-
-        limits.DailyTransferUsed += amount;
-        limits.MonthlyTransferUsed += amount;
-
-        await _context.SaveChangesAsync();
-    }
 
     /// <summary>
     /// Cancels a pending transfer
