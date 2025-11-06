@@ -18,25 +18,23 @@ public static class TransferRetryHelper
     {
         if (transfer.TransferType == "Internal" && transfer.DestinationAccountId.HasValue)
         {
-            var dto = new CreateInternalTransferDto
+            return await transferService.ExecuteInternalTransferAsync(new CreateInternalTransferDto
             {
                 SourceAccountId = transfer.SourceAccountId,
                 DestinationAccountId = transfer.DestinationAccountId.Value,
                 Amount = transfer.Amount,
                 Description = transfer.Description
-            };
-            return await transferService.ExecuteInternalTransferAsync(dto);
+            });
         }
         else if (transfer.TransferType == "External" && !string.IsNullOrWhiteSpace(transfer.DestinationAccountNumber))
         {
-            var dto = new CreateExternalTransferDto
+            return await transferService.ExecuteExternalTransferAsync(new CreateExternalTransferDto
             {
                 SourceAccountId = transfer.SourceAccountId,
                 DestinationAccountNumber = transfer.DestinationAccountNumber,
                 Amount = transfer.Amount,
                 Description = transfer.Description
-            };
-            return await transferService.ExecuteExternalTransferAsync(dto);
+            });
         }
 
         return new TransferExecutionResult

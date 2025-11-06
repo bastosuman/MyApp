@@ -31,19 +31,16 @@ public class TransfersController : ControllerBase
     [HttpPost("internal")]
     public async Task<ActionResult<ApiResponse<TransferDto>>> CreateInternalTransfer(CreateInternalTransferDto dto)
     {
-        try
-        {
-            var validationError = ControllerHelpers.ValidateModelState<TransferDto>(this);
-            if (validationError != null) return validationError;
-
-            var result = await _transferService.ExecuteInternalTransferAsync(dto);
-            return await TransferCreationHelper.HandleTransferCreationAsync(_context, result, nameof(GetTransfer));
-        }
-        catch (Exception ex)
-        {
-            return ControllerErrorHandler.HandleException<TransferDto>(
-                ex, _logger, "creating internal transfer", "An error occurred while creating the transfer");
-        }
+        return await ControllerActionHelper.ExecuteWithValidationAndErrorHandling<TransferDto>(
+            this,
+            _logger,
+            "creating internal transfer",
+            "An error occurred while creating the transfer",
+            async () =>
+            {
+                var result = await _transferService.ExecuteInternalTransferAsync(dto);
+                return await TransferCreationHelper.HandleTransferCreationAsync(_context, result, nameof(GetTransfer));
+            });
     }
 
     /// <summary>
@@ -52,19 +49,16 @@ public class TransfersController : ControllerBase
     [HttpPost("external")]
     public async Task<ActionResult<ApiResponse<TransferDto>>> CreateExternalTransfer(CreateExternalTransferDto dto)
     {
-        try
-        {
-            var validationError = ControllerHelpers.ValidateModelState<TransferDto>(this);
-            if (validationError != null) return validationError;
-
-            var result = await _transferService.ExecuteExternalTransferAsync(dto);
-            return await TransferCreationHelper.HandleTransferCreationAsync(_context, result, nameof(GetTransfer));
-        }
-        catch (Exception ex)
-        {
-            return ControllerErrorHandler.HandleException<TransferDto>(
-                ex, _logger, "creating external transfer", "An error occurred while creating the transfer");
-        }
+        return await ControllerActionHelper.ExecuteWithValidationAndErrorHandling<TransferDto>(
+            this,
+            _logger,
+            "creating external transfer",
+            "An error occurred while creating the transfer",
+            async () =>
+            {
+                var result = await _transferService.ExecuteExternalTransferAsync(dto);
+                return await TransferCreationHelper.HandleTransferCreationAsync(_context, result, nameof(GetTransfer));
+            });
     }
 
     /// <summary>
