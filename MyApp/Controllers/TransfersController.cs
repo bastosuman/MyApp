@@ -53,7 +53,7 @@ public class TransfersController : ControllerBase
                 return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("Transfer created but could not be retrieved"));
             }
 
-            var transferDto = MapToDto(transfer);
+            var transferDto = TransferMapper.MapToDto(transfer);
             return CreatedAtAction(
                 nameof(GetTransfer),
                 new { id = transfer.Id },
@@ -94,7 +94,7 @@ public class TransfersController : ControllerBase
                 return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("Transfer created but could not be retrieved"));
             }
 
-            var transferDto = MapToDto(transfer);
+            var transferDto = TransferMapper.MapToDto(transfer);
             return CreatedAtAction(
                 nameof(GetTransfer),
                 new { id = transfer.Id },
@@ -143,7 +143,7 @@ public class TransfersController : ControllerBase
                 .OrderByDescending(t => t.TransferDate)
                 .ToListAsync();
 
-            var transferDtos = transfers.Select(MapToDto).ToList();
+            var transferDtos = transfers.Select(TransferMapper.MapToDto).ToList();
 
             return Ok(ApiResponse<IEnumerable<TransferDto>>.SuccessResponse(transferDtos, "Transfers retrieved successfully"));
         }
@@ -172,7 +172,7 @@ public class TransfersController : ControllerBase
                 return NotFound(ApiResponse<TransferDto>.ErrorResponse($"Transfer with ID {id} not found"));
             }
 
-            var transferDto = MapToDto(transfer);
+            var transferDto = TransferMapper.MapToDto(transfer);
             return Ok(ApiResponse<TransferDto>.SuccessResponse(transferDto, "Transfer retrieved successfully"));
         }
         catch (Exception ex)
@@ -198,7 +198,7 @@ public class TransfersController : ControllerBase
                 .OrderByDescending(t => t.TransferDate)
                 .ToListAsync();
 
-            var transferDtos = transfers.Select(MapToDto).ToList();
+            var transferDtos = transfers.Select(TransferMapper.MapToDto).ToList();
 
             return Ok(ApiResponse<IEnumerable<TransferDto>>.SuccessResponse(transferDtos, "Account transfers retrieved successfully"));
         }
@@ -300,7 +300,7 @@ public class TransfersController : ControllerBase
                 return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("Transfer retried but could not be retrieved"));
             }
 
-            var transferDto = MapToDto(retriedTransfer);
+            var transferDto = TransferMapper.MapToDto(retriedTransfer);
             return Ok(ApiResponse<TransferDto>.SuccessResponse(transferDto, "Transfer retried successfully"));
         }
         catch (Exception ex)
@@ -310,25 +310,6 @@ public class TransfersController : ControllerBase
         }
     }
 
-    private TransferDto MapToDto(Core.Entities.Transfer transfer)
-    {
-        return new TransferDto
-        {
-            Id = transfer.Id,
-            SourceAccountId = transfer.SourceAccountId,
-            SourceAccountNumber = transfer.SourceAccount?.AccountNumber ?? string.Empty,
-            DestinationAccountId = transfer.DestinationAccountId,
-            DestinationAccountNumber = transfer.DestinationAccount?.AccountNumber ?? transfer.DestinationAccountNumber,
-            TransferType = transfer.TransferType,
-            Amount = transfer.Amount,
-            Description = transfer.Description,
-            Status = transfer.Status,
-            TransferDate = transfer.TransferDate,
-            ScheduledDate = transfer.ScheduledDate,
-            CompletedDate = transfer.CompletedDate,
-            FailureReason = transfer.FailureReason
-        };
-    }
 }
 
 

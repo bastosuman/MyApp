@@ -65,7 +65,7 @@ public class ScheduledTransfersController : ControllerBase
             var transferType = dto.DestinationAccountId.HasValue ? "Internal" : "External";
 
             // Calculate next execution date
-            var nextExecutionDate = CalculateNextExecutionDate(dto.ScheduledDate, dto.RecurrenceType, dto.RecurrenceDay);
+            var nextExecutionDate = RecurrenceCalculator.CalculateNextExecutionDate(dto.ScheduledDate, dto.RecurrenceType, dto.RecurrenceDay);
 
             var scheduledTransfer = new ScheduledTransfer
             {
@@ -86,7 +86,7 @@ public class ScheduledTransfersController : ControllerBase
             _context.ScheduledTransfers.Add(scheduledTransfer);
             await _context.SaveChangesAsync();
 
-            var scheduledTransferDto = MapToDto(scheduledTransfer);
+            var scheduledTransferDto = TransferMapper.MapToDto(scheduledTransfer);
             return CreatedAtAction(
                 nameof(GetScheduledTransfer),
                 new { id = scheduledTransfer.Id },
@@ -128,7 +128,7 @@ public class ScheduledTransfersController : ControllerBase
                 .OrderBy(s => s.NextExecutionDate)
                 .ToListAsync();
 
-            var dtos = scheduledTransfers.Select(MapToDto).ToList();
+            var dtos = scheduledTransfers.Select(TransferMapper.MapToDto).ToList();
             return Ok(ApiResponse<IEnumerable<ScheduledTransferDto>>.SuccessResponse(dtos, "Scheduled transfers retrieved successfully"));
         }
         catch (Exception ex)
@@ -156,7 +156,7 @@ public class ScheduledTransfersController : ControllerBase
                 return NotFound(ApiResponse<ScheduledTransferDto>.ErrorResponse($"Scheduled transfer with ID {id} not found"));
             }
 
-            var dto = MapToDto(scheduledTransfer);
+            var dto = TransferMapper.MapToDto(scheduledTransfer);
             return Ok(ApiResponse<ScheduledTransferDto>.SuccessResponse(dto, "Scheduled transfer retrieved successfully"));
         }
         catch (Exception ex)
@@ -213,7 +213,7 @@ public class ScheduledTransfersController : ControllerBase
             }
 
             // Recalculate next execution date
-            scheduledTransfer.NextExecutionDate = CalculateNextExecutionDate(
+            scheduledTransfer.NextExecutionDate = RecurrenceCalculator.CalculateNextExecutionDate(
                 scheduledTransfer.ScheduledDate,
                 scheduledTransfer.RecurrenceType,
                 scheduledTransfer.RecurrenceDay);
@@ -225,7 +225,7 @@ public class ScheduledTransfersController : ControllerBase
                 .Include(s => s.DestinationAccount)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
-            var transferDto = MapToDto(updatedTransfer!);
+            var transferDto = TransferMapper.MapToDto(updatedTransfer!);
             return Ok(ApiResponse<ScheduledTransferDto>.SuccessResponse(transferDto, "Scheduled transfer updated successfully"));
         }
         catch (Exception ex)
@@ -315,7 +315,7 @@ public class ScheduledTransfersController : ControllerBase
             }
 
             scheduledTransfer.Status = "Active";
-            scheduledTransfer.NextExecutionDate = CalculateNextExecutionDate(
+            scheduledTransfer.NextExecutionDate = RecurrenceCalculator.CalculateNextExecutionDate(
                 scheduledTransfer.ScheduledDate,
                 scheduledTransfer.RecurrenceType,
                 scheduledTransfer.RecurrenceDay);
@@ -331,80 +331,7 @@ public class ScheduledTransfersController : ControllerBase
         }
     }
 
-    private ScheduledTransferDto MapToDto(ScheduledTransfer scheduledTransfer)
-    {
-        return new ScheduledTransferDto
-        {
-            Id = scheduledTransfer.Id,
-            SourceAccountId = scheduledTransfer.SourceAccountId,
-            SourceAccountNumber = scheduledTransfer.SourceAccount?.AccountNumber ?? string.Empty,
-            DestinationAccountId = scheduledTransfer.DestinationAccountId,
-            DestinationAccountNumber = scheduledTransfer.DestinationAccount?.AccountNumber ?? scheduledTransfer.DestinationAccountNumber,
-            TransferType = scheduledTransfer.TransferType,
-            Amount = scheduledTransfer.Amount,
-            Description = scheduledTransfer.Description,
-            ScheduledDate = scheduledTransfer.ScheduledDate,
-            RecurrenceType = scheduledTransfer.RecurrenceType,
-            RecurrenceDay = scheduledTransfer.RecurrenceDay,
-            Status = scheduledTransfer.Status,
-            NextExecutionDate = scheduledTransfer.NextExecutionDate,
-            LastExecutionDate = scheduledTransfer.LastExecutionDate,
-            ExecutionCount = scheduledTransfer.ExecutionCount,
-            CreatedDate = scheduledTransfer.CreatedDate
-        };
-    }
 
-    private DateTime? CalculateNextExecutionDate(DateTime scheduledDate, string recurrenceType, int? recurrenceDay)
-    {
-        if (recurrenceType == "OneTime")
-        {
-            return scheduledDate;
-        }
-
-        var now = DateTime.UtcNow;
-        var nextDate = scheduledDate;
-
-        switch (recurrenceType)
-        {
-            case "Daily":
-                nextDate = now.AddDays(1);
-                break;
-
-            case "Weekly":
-                var daysUntilNext = ((int)DayOfWeek.Monday - (int)now.DayOfWeek + 7) % 7;
-                if (daysUntilNext == 0) daysUntilNext = 7;
-                nextDate = now.AddDays(daysUntilNext);
-                break;
-
-            case "Monthly":
-                if (recurrenceDay.HasValue)
-                {
-                    var day = Math.Min(recurrenceDay.Value, DateTime.DaysInMonth(now.Year, now.Month));
-                    nextDate = new DateTime(now.Year, now.Month, day);
-                    if (nextDate <= now)
-                    {
-                        nextDate = nextDate.AddMonths(1);
-                        day = Math.Min(recurrenceDay.Value, DateTime.DaysInMonth(nextDate.Year, nextDate.Month));
-                        nextDate = new DateTime(nextDate.Year, nextDate.Month, day);
-                    }
-                }
-                else
-                {
-                    nextDate = now.AddMonths(1);
-                }
-                break;
-
-            case "Quarterly":
-                nextDate = now.AddMonths(3);
-                break;
-
-            case "Annually":
-                nextDate = now.AddYears(1);
-                break;
-        }
-
-        return nextDate;
-    }
 }
 
 

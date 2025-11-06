@@ -608,5 +608,104 @@ public class TransferServiceTests
         Assert.False(result.IsValid);
         Assert.Contains("Monthly transfer limit", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task CancelTransferAsync_ShouldReturnTrue_WhenTransferIsPending()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var logger = CreateLogger();
+        var service = new TransferService(context, logger);
+
+        var account1 = TestDataFactory.CreateTestAccount("ACC001", "John Doe", 10000m, isActive: true);
+        var account2 = TestDataFactory.CreateTestAccount("ACC002", "Jane Smith", 5000m, isActive: true);
+        context.Accounts.AddRange(account1, account2);
+        await context.SaveChangesAsync();
+
+        var transfer = new Transfer
+        {
+            SourceAccountId = account1.Id,
+            DestinationAccountId = account2.Id,
+            TransferType = "Internal",
+            Amount = 1000m,
+            Status = "Pending",
+            TransferDate = DateTime.UtcNow
+        };
+        context.Transfers.Add(transfer);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await service.CancelTransferAsync(transfer.Id);
+
+        // Assert
+        Assert.True(result);
+        await context.Entry(transfer).ReloadAsync();
+        Assert.Equal("Cancelled", transfer.Status);
+    }
+
+    [Fact]
+    public async Task CancelTransferAsync_ShouldReturnFalse_WhenTransferNotFound()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var logger = CreateLogger();
+        var service = new TransferService(context, logger);
+
+        // Act
+        var result = await service.CancelTransferAsync(999);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateTransferLimitsAsync_ShouldUpdateDailyAndMonthlyUsed()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var logger = CreateLogger();
+        var service = new TransferService(context, logger);
+
+        var account = TestDataFactory.CreateTestAccount("ACC001", "John Doe", 10000m, isActive: true);
+        context.Accounts.Add(account);
+        await context.SaveChangesAsync();
+
+        var limits = new AccountLimits
+        {
+            AccountId = account.Id,
+            DailyTransferLimit = 10000m,
+            MonthlyTransferLimit = 50000m,
+            PerTransactionMax = 5000m,
+            PerTransactionMin = 1m,
+            DailyTransferUsed = 0m,
+            MonthlyTransferUsed = 0m,
+            LastDailyReset = DateTime.UtcNow.Date,
+            LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1)
+        };
+        context.AccountLimits.Add(limits);
+        account.Limits = limits;
+        await context.SaveChangesAsync();
+
+        // Act - Test through ExecuteInternalTransferAsync since UpdateTransferLimitsAsync is private
+        var destAccount = TestDataFactory.CreateTestAccount("ACC002", "Jane", 5000m, isActive: true);
+        context.Accounts.Add(destAccount);
+        await context.SaveChangesAsync();
+
+        var dto = new CreateInternalTransferDto
+        {
+            SourceAccountId = account.Id,
+            DestinationAccountId = destAccount.Id,
+            Amount = 1000m,
+            Description = "Test"
+        };
+
+        var result = await service.ExecuteInternalTransferAsync(dto);
+
+        // Assert
+        Assert.True(result.Success);
+        await context.Entry(limits).ReloadAsync();
+        Assert.Equal(1000m, limits.DailyTransferUsed);
+        Assert.Equal(1000m, limits.MonthlyTransferUsed);
+    }
 }
 
