@@ -537,30 +537,28 @@ public class TransferServiceTests
         context.Accounts.Add(account);
         await context.SaveChangesAsync();
 
-        // Create limits and use a transfer to set daily used, then test limit
+        // Create limits with daily used already at 9000 (near the limit)
+        // The reset logic will check if LastDailyReset < today, so we set it to today to prevent reset
         var limits = new AccountLimits
         {
             AccountId = account.Id,
             DailyTransferLimit = 10000m,
             MonthlyTransferLimit = 50000m,
-            PerTransactionMax = 5000m,
+            PerTransactionMax = 5000m, // This is higher than 2000, so it won't block
             PerTransactionMin = 1m,
-            DailyTransferUsed = 0m,
+            DailyTransferUsed = 9000m, // Already used 9000, only 1000 left
             MonthlyTransferUsed = 0m,
-            LastDailyReset = DateTime.UtcNow.Date,
+            LastDailyReset = DateTime.UtcNow.Date, // Today, so reset won't happen
             LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1)
         };
         context.AccountLimits.Add(limits);
+        account.Limits = limits; // Set the navigation property
         await context.SaveChangesAsync();
 
-        // First, make a transfer to use up some of the daily limit
-        var firstResult = await service.CheckTransferLimitsAsync(account.Id, 9000m);
-        Assert.True(firstResult.IsValid); // Should pass
-
-        // Now update limits manually to simulate having used 9000
-        limits.DailyTransferUsed = 9000m;
-        await context.SaveChangesAsync();
-
+        // Reload to ensure limits are attached
+        context.Entry(account).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+        account = await context.Accounts.Include(a => a.Limits).FirstAsync(a => a.Id == account.Id);
+        
         // Act - Try to transfer 2000, but only 1000 is available (10000 - 9000)
         var result = await service.CheckTransferLimitsAsync(account.Id, 2000m);
 
@@ -581,20 +579,27 @@ public class TransferServiceTests
         context.Accounts.Add(account);
         await context.SaveChangesAsync();
 
+        // Set up limits where monthly limit is the constraint
+        // PerTransactionMax must be high enough to not block, daily limit must also not block
         var limits = new AccountLimits
         {
             AccountId = account.Id,
-            DailyTransferLimit = 10000m,
+            DailyTransferLimit = 10000m, // High enough to not block 6000
             MonthlyTransferLimit = 50000m,
-            PerTransactionMax = 10000m, // Increase max to test monthly limit
+            PerTransactionMax = 10000m, // High enough to not block 6000
             PerTransactionMin = 1m,
-            DailyTransferUsed = 0m,
-            MonthlyTransferUsed = 45000m,
-            LastDailyReset = DateTime.UtcNow.Date,
-            LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1)
+            DailyTransferUsed = 0m, // No daily usage
+            MonthlyTransferUsed = 45000m, // Already used 45000, only 5000 left
+            LastDailyReset = DateTime.UtcNow.Date, // Today, so reset won't happen
+            LastMonthlyReset = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1) // Same month, so reset won't happen
         };
         context.AccountLimits.Add(limits);
+        account.Limits = limits; // Set the navigation property
         await context.SaveChangesAsync();
+
+        // Reload to ensure limits are attached
+        context.Entry(account).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+        account = await context.Accounts.Include(a => a.Limits).FirstAsync(a => a.Id == account.Id);
 
         // Act - Try to transfer 6000, but only 5000 is available monthly (50000 - 45000)
         var result = await service.CheckTransferLimitsAsync(account.Id, 6000m);
