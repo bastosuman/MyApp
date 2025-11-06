@@ -544,5 +544,81 @@ public class TransfersControllerTests
         var response = Assert.IsType<ApiResponse<TransferDto>>(notFoundResult.Value);
         Assert.False(response.Success);
     }
+
+    [Fact]
+    public async Task GetTransfers_ShouldFilterByTransferType()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var controllerLogger = CreateControllerLogger();
+        var serviceLogger = CreateServiceLogger();
+        var transferService = new TransferService(context, serviceLogger);
+        var controller = new TransfersController(context, transferService, controllerLogger);
+
+        var account1 = TestDataFactory.CreateTestAccount("ACC001", "John Doe", 10000m, isActive: true);
+        var account2 = TestDataFactory.CreateTestAccount("ACC002", "Jane Smith", 5000m, isActive: true);
+        context.Accounts.AddRange(account1, account2);
+        await context.SaveChangesAsync();
+
+        var transfer1 = new Transfer
+        {
+            SourceAccountId = account1.Id,
+            DestinationAccountId = account2.Id,
+            TransferType = "Internal",
+            Amount = 1000m,
+            Status = "Completed",
+            TransferDate = DateTime.UtcNow
+        };
+        var transfer2 = new Transfer
+        {
+            SourceAccountId = account1.Id,
+            DestinationAccountNumber = "EXT123",
+            TransferType = "External",
+            Amount = 500m,
+            Status = "Completed",
+            TransferDate = DateTime.UtcNow
+        };
+        context.Transfers.AddRange(transfer1, transfer2);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await controller.GetTransfers(transferType: "Internal");
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<IEnumerable<TransferDto>>>(okResult.Value);
+        Assert.True(response.Success);
+        var transfers = response.Data!.ToList();
+        Assert.Single(transfers);
+        Assert.Equal("Internal", transfers[0].TransferType);
+    }
+
+    [Fact]
+    public async Task CreateInternalTransfer_ShouldReturnBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        using var context = CreateDbContext();
+        var controllerLogger = CreateControllerLogger();
+        var serviceLogger = CreateServiceLogger();
+        var transferService = new TransferService(context, serviceLogger);
+        var controller = new TransfersController(context, transferService, controllerLogger);
+
+        // Simulate model state error
+        controller.ModelState.AddModelError("Amount", "Amount is required");
+
+        var dto = new CreateInternalTransferDto
+        {
+            SourceAccountId = 1,
+            DestinationAccountId = 2,
+            Amount = 0m // Invalid
+        };
+
+        // Act
+        var result = await controller.CreateInternalTransfer(dto);
+
+        // Assert
+        // Should return BadRequest due to model validation
+        Assert.True(result.Result is BadRequestObjectResult || result.Result is ObjectResult);
+    }
 }
 

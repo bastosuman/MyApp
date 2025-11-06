@@ -61,8 +61,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating internal transfer");
-            return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("An error occurred while creating the transfer"));
+            return ControllerErrorHandler.HandleException<TransferDto>(
+                ex, _logger, "creating internal transfer", "An error occurred while creating the transfer");
         }
     }
 
@@ -102,8 +102,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating external transfer");
-            return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("An error occurred while creating the transfer"));
+            return ControllerErrorHandler.HandleException<TransferDto>(
+                ex, _logger, "creating external transfer", "An error occurred while creating the transfer");
         }
     }
 
@@ -149,8 +149,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving transfers");
-            return StatusCode(500, ApiResponse<IEnumerable<TransferDto>>.ErrorResponse("An error occurred while retrieving transfers"));
+            return ControllerErrorHandler.HandleException<IEnumerable<TransferDto>>(
+                ex, _logger, "retrieving transfers", "An error occurred while retrieving transfers");
         }
     }
 
@@ -177,8 +177,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving transfer");
-            return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("An error occurred while retrieving the transfer"));
+            return ControllerErrorHandler.HandleException<TransferDto>(
+                ex, _logger, "retrieving transfer", "An error occurred while retrieving the transfer");
         }
     }
 
@@ -204,8 +204,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving account transfers");
-            return StatusCode(500, ApiResponse<IEnumerable<TransferDto>>.ErrorResponse("An error occurred while retrieving account transfers"));
+            return ControllerErrorHandler.HandleException<IEnumerable<TransferDto>>(
+                ex, _logger, "retrieving account transfers", "An error occurred while retrieving account transfers");
         }
     }
 
@@ -228,8 +228,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cancelling transfer");
-            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred while cancelling the transfer"));
+            return ControllerErrorHandler.HandleException<object>(
+                ex, _logger, "cancelling transfer", "An error occurred while cancelling the transfer");
         }
     }
 
@@ -305,8 +305,8 @@ public class TransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrying transfer");
-            return StatusCode(500, ApiResponse<TransferDto>.ErrorResponse("An error occurred while retrying the transfer"));
+            return ControllerErrorHandler.HandleException<TransferDto>(
+                ex, _logger, "retrying transfer", "An error occurred while retrying the transfer");
         }
     }
 

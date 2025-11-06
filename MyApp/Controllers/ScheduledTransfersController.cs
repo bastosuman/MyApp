@@ -94,8 +94,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating scheduled transfer");
-            return StatusCode(500, ApiResponse<ScheduledTransferDto>.ErrorResponse("An error occurred while creating the scheduled transfer"));
+            return ControllerErrorHandler.HandleException<ScheduledTransferDto>(
+                ex, _logger, "creating scheduled transfer", "An error occurred while creating the scheduled transfer");
         }
     }
 
@@ -133,8 +133,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving scheduled transfers");
-            return StatusCode(500, ApiResponse<IEnumerable<ScheduledTransferDto>>.ErrorResponse("An error occurred while retrieving scheduled transfers"));
+            return ControllerErrorHandler.HandleException<IEnumerable<ScheduledTransferDto>>(
+                ex, _logger, "retrieving scheduled transfers", "An error occurred while retrieving scheduled transfers");
         }
     }
 
@@ -161,8 +161,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving scheduled transfer");
-            return StatusCode(500, ApiResponse<ScheduledTransferDto>.ErrorResponse("An error occurred while retrieving the scheduled transfer"));
+            return ControllerErrorHandler.HandleException<ScheduledTransferDto>(
+                ex, _logger, "retrieving scheduled transfer", "An error occurred while retrieving the scheduled transfer");
         }
     }
 
@@ -230,8 +230,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating scheduled transfer");
-            return StatusCode(500, ApiResponse<ScheduledTransferDto>.ErrorResponse("An error occurred while updating the scheduled transfer"));
+            return ControllerErrorHandler.HandleException<ScheduledTransferDto>(
+                ex, _logger, "updating scheduled transfer", "An error occurred while updating the scheduled transfer");
         }
     }
 
@@ -257,8 +257,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cancelling scheduled transfer");
-            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred while cancelling the scheduled transfer"));
+            return ControllerErrorHandler.HandleException<object>(
+                ex, _logger, "cancelling scheduled transfer", "An error occurred while cancelling the scheduled transfer");
         }
     }
 
@@ -289,8 +289,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error pausing scheduled transfer");
-            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred while pausing the scheduled transfer"));
+            return ControllerErrorHandler.HandleException<object>(
+                ex, _logger, "pausing scheduled transfer", "An error occurred while pausing the scheduled transfer");
         }
     }
 
@@ -326,8 +326,8 @@ public class ScheduledTransfersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resuming scheduled transfer");
-            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred while resuming the scheduled transfer"));
+            return ControllerErrorHandler.HandleException<object>(
+                ex, _logger, "resuming scheduled transfer", "An error occurred while resuming the scheduled transfer");
         }
     }
 
